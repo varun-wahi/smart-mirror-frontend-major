@@ -18,7 +18,7 @@ const HomePage = () => {
       {/* Footer: Bottom Center */}
       <div className="col-span-2 text-center self-end mt-4">
         <p className="text-lg text-gray-400">
-          Made with ❤️ By Varun Wahi, Load, Chiku, Vedant
+          Made with ❤️ By Varun ,Aditya, Soumyadeep, Vedant
         </p>
       </div>
     </div>
