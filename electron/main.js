@@ -37,7 +37,6 @@ function createControlWindow() {
       contextIsolation: true, // Ensures a secure environment
       nodeIntegration: false,
       enableWebRTC: true, // Enable WebRTC for camera access
-      webSecurity: false, // Allow local resources (only disable for testing)
     },
   });
 

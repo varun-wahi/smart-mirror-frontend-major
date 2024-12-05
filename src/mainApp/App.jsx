@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage.jsx';
 import SlideshowPage from './pages/SlideShowPage.jsx';
 import FaceAuthenticationPage from './pages/FaceAuthentication.jsx';
 import TeacherDataPage from './pages/TeacherDataPage.jsx';
+import InterviewPracticePage from './pages/InterviewPracticePage.jsx';
 
 function App() {
   const navigate = useNavigate();
@@ -46,6 +47,7 @@ function App() {
         path="/teacher-data"
         element={<TeacherDataPage teacherName={teacherName} />}
       />
+      <Route path="/interview-practice" element={<InterviewPracticePage />} />
     </Routes>
   );
 }

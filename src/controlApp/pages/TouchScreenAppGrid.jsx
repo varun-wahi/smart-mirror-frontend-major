@@ -17,21 +17,26 @@ const TouchscreenAppGrid = () => {
   };
 
   return (
-    <div className="grid grid-cols-2 gap-6 p-6 bg-black h-screen">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-6 p-6 bg-black h-screen">
       {apps.map((app, index) => (
         <button
           key={index}
           onClick={() => handleButtonClick(app.action, app.data)}
-          className="flex flex-col items-center justify-center bg-zinc-900 hover:bg-zinc-800 active:bg-gray-600 rounded-xl shadow-lg p-6"
+          className="flex flex-col items-center justify-center bg-gradient-to-b from-gray-800 to-zinc-900 hover:from-gray-700 hover:to-zinc-800 active:from-gray-600 active:to-zinc-700 rounded-xl shadow-lg p-6 transition-transform transform hover:scale-105 focus:ring-2 focus:ring-teal-500"
+          aria-label={`Open ${app.name}`}
         >
           {/* App Icon */}
           <img
             src={app.icon}
             alt={`${app.name} Icon`}
-            className="w-12 h-12 mb-2"
+            className="w-16 h-16 mb-2"
+            onError={(e) => {
+              e.target.onerror = null; // Prevent infinite loop
+              e.target.src = "icons/default.png"; // Fallback to default icon
+            }}
           />
           {/* App Name */}
-          <div className="text-white text-sm font-medium">{app.name}</div>
+          <div className="text-white text-center text-sm font-medium">{app.name}</div>
         </button>
       ))}
     </div>
