@@ -3,7 +3,7 @@ import React from "react";
 const apps = [
   { name: "Home", action: "navigate", data: "/", icon: "icons/home.png" },
   { name: "Slideshow", action: "navigate", data: "/slideshow", icon: "icons/slideshow.png" },
-  { name: "Teacher Data", action: "navigate", data: "/teacher-data", icon: "icons/teacher.png" },
+  { name: "Teacher Data", action: "navigate", data: "/face-authentication", icon: "icons/teacher.png" },
   { name: "Interview Practice", action: "navigate", data: "/interview-practice", icon: "icons/interview.png" },
 ];
 
