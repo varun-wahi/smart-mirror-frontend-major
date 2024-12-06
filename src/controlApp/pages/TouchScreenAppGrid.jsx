@@ -18,17 +18,22 @@ const TouchscreenAppGrid = () => {
   // Function to toggle motion detection
   const toggleMotionDetection = async () => {
     try {
+      let response;
+  
       if (isMotionActive) {
         // Stop motion detection API call
-        await axios.post("http://localhost:5020/api/light/stop");
+        response = await axios.post("http://localhost:5020/api/light/stop");
         console.log("Lights off.");
       } else {
         // Start motion detection API call
         console.log("Motion detection started.");
-
-        await axios.post("http://localhost:5020/api/light/start");
+        response = await axios.post("http://localhost:5020/api/light/start");
         console.log("Lights on.");
       }
+  
+      // Log the server response
+      console.log("Server Response:", response.data);
+  
       // Update the state
       setIsMotionActive(!isMotionActive);
     } catch (error) {
