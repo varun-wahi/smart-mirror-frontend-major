@@ -18,11 +18,11 @@ const TouchscreenAppGrid = () => {
     try {
       if (isMotionActive) {
         // Stop motion detection API call
-        await axios.post("http://localhost:5020/api/motion/stop");
+        await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/motion/stop`);
         console.log("Motion detection stopped.");
       } else {
         // Start motion detection API call
-        await axios.post("http://localhost:5020/api/motion/start");
+        await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/motion/start`);
         console.log("Motion detection started.");
       }
       // Update the state
