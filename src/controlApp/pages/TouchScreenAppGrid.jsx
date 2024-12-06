@@ -12,18 +12,22 @@ const apps = [
 const TouchscreenAppGrid = () => {
   // State to manage the motion detection toggle
   const [isMotionActive, setIsMotionActive] = useState(false);
+  const url = process.env.REACT_APP_BACKEND_URL;
+  console.log("URL: "+url);
 
   // Function to toggle motion detection
   const toggleMotionDetection = async () => {
     try {
       if (isMotionActive) {
         // Stop motion detection API call
-        await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/motion/stop`);
-        console.log("Motion detection stopped.");
+        await axios.post("http://localhost:5020/api/light/stop");
+        console.log("Lights off.");
       } else {
         // Start motion detection API call
-        await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/motion/start`);
         console.log("Motion detection started.");
+
+        await axios.post("http://localhost:5020/api/light/start");
+        console.log("Lights on.");
       }
       // Update the state
       setIsMotionActive(!isMotionActive);
@@ -63,12 +67,12 @@ const TouchscreenAppGrid = () => {
         className={`flex flex-col items-center justify-center ${
           isMotionActive ? "bg-green-600" : "bg-red-600"
         } hover:bg-opacity-80 active:bg-opacity-70 rounded-xl shadow-lg p-6 transition-transform transform hover:scale-105 focus:ring-2 focus:ring-teal-500`}
-        aria-label="Toggle Motion Detection"
+        aria-label="Toggle Lights"
       >
         {/* Motion Icon */}
         <img
-          src="icons/motion.png"
-          alt="Motion Icon"
+          src="icons/bulb.png"
+          alt="Bulb Icon"
           className="w-16 h-16 mb-2"
           onError={(e) => {
             e.target.onerror = null;
@@ -77,7 +81,7 @@ const TouchscreenAppGrid = () => {
         />
         {/* Toggle Text */}
         <div className="text-white text-center text-sm font-medium">
-          {isMotionActive ? "Stop Motion" : "Start Motion"}
+          {isMotionActive ? "Stop Light" : "Start Light"}
         </div>
       </button>
     </div>
