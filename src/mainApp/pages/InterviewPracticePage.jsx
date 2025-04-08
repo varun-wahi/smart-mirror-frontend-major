@@ -5,12 +5,16 @@ const InterviewPracticePage = () => {
   const [loading, setLoading] = useState(true); // Loading state
   const [error, setError] = useState(null); // Error handling
 
+
+  const url = process.env.REACT_APP_LOCAL_BACKEND_URL || "http://localhost:5020";
+  // const url = process.env.REACT_APP_BACKEND_URL || "https://smart-mirror-backend.vercel.app";
+
   // Function to fetch questions from the API
   const fetchQuestions = async () => {
     setLoading(true);
     setError(null); // Reset error state
     try {
-      const response = await fetch("https://smart-mirror-backend.vercel.app/api/interview/questions", {
+      const response = await fetch(`${url}/api/interview/questions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

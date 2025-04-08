@@ -12,7 +12,8 @@ const apps = [
 const TouchscreenAppGrid = () => {
   // State to manage the motion detection toggle
   const [isMotionActive, setIsMotionActive] = useState(false);
-  const url = process.env.REACT_APP_BACKEND_URL;
+  // const url = process.env.REACT_APP_BACKEND_URL;
+  const url = process.env.REACT_APP_LOCAL_BACKEND_URL;
   console.log("URL: "+url);
 
   // Function to toggle motion detection
