@@ -13,6 +13,8 @@
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "axios": "^1.7.9",
+    "cloudinary-react": "^1.8.1",
+    "framer-motion": "^12.6.3",
     "lucide-react": "^0.487.0",
     "onoff": "^6.0.3",
     "react": "^18.3.1",
