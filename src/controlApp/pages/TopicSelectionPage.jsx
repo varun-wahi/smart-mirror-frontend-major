@@ -1,39 +1,67 @@
 import React, { useState } from "react";
 import { ArrowLeft, ChevronRight } from "lucide-react";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
 
-const topics = ["React JS", "Python", "SDE", "OOPS", "DBMS", "CN", "OS"];
+const topics = ["React JS", "Python", "SDE", "OOPS", "DBMS", "CN", "OS", "Operations and Supply Chain", "International Business"];
 const difficulties = ["Easy", "Medium", "Hard"];
 const questionCounts = [5, 10, 20];
-
 
 const TopicSelectionPage = () => {
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [difficulty, setDifficulty] = useState(null);
   const [questionCount, setQuestionCount] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-    const navigate = useNavigate(); 
+  const navigate = useNavigate();
 
-
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!selectedTopic || !difficulty || !questionCount) {
       alert("Please select topic, difficulty, and number of questions.");
       return;
     }
 
-    window.api.send("navigate", {
-      path: "/interview-practice",
-      topic: selectedTopic,
-      difficulty,
-      questionCount,
-    });
-    
-    navigate("/");
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:5020/api/interview/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: selectedTopic,
+          difficulty: difficulty.toLowerCase(),
+          numQuestions: questionCount,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch questions");
+
+      const data = await response.json();
+
+      // Send data to display app
+      window.api.send("show-interview-screen", {
+        topic: selectedTopic,
+        difficulty,
+        questions: data.questions,
+      });
+
+      // 🔥 Send same data to controller's QuestionNavigatorPage
+window.api.send("interview-data", {
+    topic: selectedTopic,
+    difficulty,
+    questions: data.questions,
+  });
+
+      // Navigate to Question Navigator page (controller side)
+      navigate("/question-navigator");
+    } catch (error) {
+      console.error("Error fetching or sending data:", error.message);
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-gray-900 to-blue-950 text-blue-50">
-      {/* Header */}
       <header className="p-6 border-b border-blue-900/30">
         <button 
           onClick={() => navigate("/")} 
@@ -45,7 +73,7 @@ const TopicSelectionPage = () => {
       </header>
 
       <div className="flex-1 p-6 md:p-8 max-w-4xl mx-auto w-full overflow-y-auto">
-        {/* Topics Section */}
+        {/* Topics */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-6 text-blue-200">Choose a Topic</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -65,7 +93,7 @@ const TopicSelectionPage = () => {
           </div>
         </div>
 
-        {/* Difficulty Section */}
+        {/* Difficulty */}
         <div className="mb-8">
           <h3 className="text-xl font-bold mb-5 text-blue-200">Select Difficulty</h3>
           <div className="flex flex-col sm:flex-row gap-4 mb-2">
@@ -89,7 +117,7 @@ const TopicSelectionPage = () => {
           </div>
         </div>
 
-        {/* Question Count Section */}
+        {/* Question Count */}
         <div className="mb-10">
           <h3 className="text-xl font-bold mb-5 text-blue-200">Number of Questions</h3>
           <div className="flex flex-col sm:flex-row gap-4 mb-2">
@@ -109,17 +137,17 @@ const TopicSelectionPage = () => {
           </div>
         </div>
 
-        {/* Next Button */}
+        {/* Start Interview */}
         <button
           onClick={handleNext}
-          disabled={!selectedTopic || !difficulty || !questionCount}
+          disabled={!selectedTopic || !difficulty || !questionCount || loading}
           className={`w-full py-4 rounded-xl flex items-center justify-center text-lg font-semibold shadow-lg transition-all duration-200 ${
-            !selectedTopic || !difficulty || !questionCount
+            !selectedTopic || !difficulty || !questionCount || loading
               ? "bg-blue-800/50 text-blue-300/50 cursor-not-allowed"
               : "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30"
           }`}
         >
-          Start Interview
+          {loading ? "Loading..." : "Start Interview"}
           <ChevronRight size={20} className="ml-2" />
         </button>
       </div>

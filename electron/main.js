@@ -49,6 +49,11 @@ function createControlWindow() {
   controlWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error('Control Window failed to load:', errorDescription);
   });
+
+  ipcMain.on("question-index", (event, payload) => {
+    console.log("[Main] Received question index:", payload);
+    mainWindow.webContents.send("question-index", payload);
+  });
 }
 
 // IPC Listener: Forward navigation commands to the main window
@@ -58,12 +63,23 @@ ipcMain.on('navigate', (event, page) => {
   }
 });
 
-// IPC Listener: Show Interview Screen with Topic and Difficulty
 ipcMain.on('show-interview-screen', (event, data) => {
   if (mainWindow) {
+    mainWindow.webContents.send('navigate', { path: '/interview-practice' });
     mainWindow.webContents.send('show-interview-screen', data);
   }
+
+  if (controlWindow) {
+    controlWindow.webContents.send('interview-data', data); // ✅ send to controller
+  }
 });
+
+// // IPC Listener: Show Interview Screen with Topic and Difficulty
+// ipcMain.on('show-interview-screen', (event, data) => {
+//   if (mainWindow) {
+//     mainWindow.webContents.send('show-interview-screen', data);
+//   }
+// });
 
 // Handle app ready event
 app.whenReady().then(() => {

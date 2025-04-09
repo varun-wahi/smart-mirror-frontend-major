@@ -1,98 +1,127 @@
-import React, { useState, useEffect } from "react";
-import { useInterview } from "../utils/InterviewContext";
-
+import React, { useEffect, useState, useRef } from "react";
 
 const InterviewPracticePage = () => {
-  const { interviewData } = useInterview();
-  const { topic, difficulty, questionCount } = interviewData;
+  const [interviewData, setInterviewData] = useState(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const previousIndexRef = useRef(null);
 
-  const [questions, setQuestions] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const url = process.env.REACT_APP_LOCAL_BACKEND_URL || "http://localhost:5020";
-
-  const fetchQuestions = async () => {
-    setLoading(true);
-    setError(null);
-    console.log("Fetching questions...");
-    console.log("No of questions:", questionCount);
-    try {
-      const response = await fetch(`${url}/api/interview/questions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic,
-          difficulty: difficulty.toLowerCase(), // Convert to lowercase if needed
-          numQuestions: questionCount,
-        }),
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch questions");
-
-      const data = await response.json();
-      setQuestions(data.questions);
-    } catch (err) {
-      setError(err.message || "Something went wrong");
-    } finally {
-      setLoading(false);
+  const speakQuestion = (text) => {
+    if (!text) return;
+  
+    window.speechSynthesis.cancel();
+  
+    const utterance = new SpeechSynthesisUtterance(text);
+  
+    // Optional speech settings
+    utterance.rate = 1.3;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+  
+    const preferredVoices = ["Google UK English Female", "Microsoft David Desktop"];
+    const voices = window.speechSynthesis.getVoices();
+  
+    if (voices.length > 0) {
+      // First, try to find a preferred voice
+      const preferredVoice = voices.find(voice => preferredVoices.includes(voice.name));
+  
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      } else {
+        // Otherwise fallback to any English voice
+        const englishVoice = voices.find(voice => voice.lang.startsWith('en'));
+        if (englishVoice) {
+          utterance.voice = englishVoice;
+        }
+      }
     }
+  
+    window.speechSynthesis.speak(utterance);
+  };
+  
+
+  const ensureVoicesLoaded = () => {
+    return new Promise((resolve) => {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        resolve();
+      } else {
+        window.speechSynthesis.onvoiceschanged = () => resolve();
+      }
+    });
   };
 
   useEffect(() => {
-    fetchQuestions();
-  }, [topic, difficulty, questionCount]);
+    const handleShowInterviewScreen = async (data) => {
+      console.log("[InterviewPracticePage] Received interview data:", data);
+      setInterviewData(data);
+      setCurrentIndex(0);
 
-  // Render loading spinner
-  if (loading) {
+
+      if (data?.questions?.length > 0) {
+        await ensureVoicesLoaded(); // wait until voices are loaded
+        setTimeout(() => {
+          speakQuestion(data.questions[0].question);
+        }, 300);
+      }
+
+
+    };
+
+    const handleQuestionIndex = async (payload) => {
+      const index = payload?.index;
+      console.log("[InterviewPracticePage] Received index payload:", payload);
+      if (typeof index === "number") {
+        await ensureVoicesLoaded();
+        setCurrentIndex(index);
+        previousIndexRef.current = index;
+      }
+    };
+
+    window.api.on("show-interview-screen", handleShowInterviewScreen);
+    window.api.on("question-index", handleQuestionIndex);
+
+    return () => {
+      window.api.removeAllListeners("show-interview-screen");
+      window.api.removeAllListeners("question-index");
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (interviewData?.questions && previousIndexRef.current === currentIndex) {
+      const questionText = interviewData.questions[currentIndex].question;
+      speakQuestion(questionText);
+    }
+  }, [interviewData, currentIndex]);
+
+  if (!interviewData) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-gray-500 border-opacity-50"></div>
-        <p className="mt-4 text-gray-400 text-sm font-light">It might take a while to load...</p>
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <p className="text-gray-400">Waiting for questions from controller...</p>
       </div>
     );
   }
 
-  // Render error message
-  if (error) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white">
-        <p className="text-red-500 font-medium">Error: {error}</p>
-        <button
-          onClick={fetchQuestions}
-          className="mt-4 bg-gray-800 hover:bg-gray-700 text-white py-2 px-4 rounded-lg"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
+  const { topic, questions } = interviewData;
+  const question = questions[currentIndex];
 
-  // Render questions
   return (
-    <div className="min-h-screen bg-black text-white p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Interview Questions: React</h1>
-      </div>
-
-      {/* Questions List */}
-      <div className="space-y-6">
-        {questions?.map((q, index) => (
-          <div key={index} className="bg-gray-800 p-4 rounded-lg shadow-lg">
-            <p className="text-lg font-medium mb-2">{index + 1}. {q.question}</p>
-            <p className="text-sm text-gray-400">{q.answer}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* More Questions Button */}
-      <div className="mt-8 flex justify-center">
-        <button
-          onClick={fetchQuestions}
-          className="bg-teal-600 hover:bg-teal-500 text-white py-2 px-6 rounded-lg shadow-lg transition"
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center">
+      <h1 className="text-2xl font-bold absolute top-6 left-6">Interview: {topic}</h1>
+  
+      <div className="max-w-4xl">
+        <div className="mb-8">
+          <p className="text-2xl font-semibold mb-4">
+            {currentIndex + 1}. {question.question}
+          </p>
+          <p className="text-sm text-gray-400">{question.answer}</p>
+        </div>
+  
+        <button 
+          onClick={() => speakQuestion(question.question)}
+          className="bg-blue-600 hover:bg-blue-500 text-white py-2 px-4 rounded-md"
         >
-          More Questions
+          Read Question Again
         </button>
       </div>
     </div>

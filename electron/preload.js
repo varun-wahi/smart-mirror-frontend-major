@@ -1,30 +1,33 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-console.log('Preload script loaded successfully'); // Debugging log
+console.log('Preload script loaded successfully');
+
+const validSendChannels = ['navigate', 'control-action', 'show-interview-screen', 'interview-data', 'question-index'];
+const validReceiveChannels = ['navigate', 'control-action', 'show-interview-screen', 'interview-data', 'question-index'];
 
 contextBridge.exposeInMainWorld('api', {
-  // Send messages to the main process
   send: (channel, data) => {
-    console.log(`Sending: ${channel}, Data:`, data); // Debug log
-    const validChannels = ['navigate', 'control-action'];
-    // const validChannels = ['navigate', 'control-action', 'show-interview-screen'];
-    if (validChannels.includes(channel)) {
+    if (validSendChannels.includes(channel)) {
+      console.log(`[Preload] Sending through channel: ${channel}`, data);
       ipcRenderer.send(channel, data);
+    } else {
+      console.warn(`[Preload] Attempted to send through invalid channel: ${channel}`);
     }
   },
-  // Listen for messages from the main process
   on: (channel, callback) => {
-    console.log(`Listening for: ${channel}`); // Debug log
-    const validChannels = ['navigate', 'control-action'];
-    // const validChannels = ['navigate', 'control-action', 'show-interview-screen'];
-
-    if (validChannels.includes(channel)) {
+    if (validReceiveChannels.includes(channel)) {
+      console.log(`[Preload] Listening to channel: ${channel}`);
       ipcRenderer.on(channel, (event, ...args) => callback(...args));
+    } else {
+      console.warn(`[Preload] Attempted to listen to invalid channel: ${channel}`);
     }
   },
-  // Remove all listeners for a channel
+  receive: (channel, func) => {
+    ipcRenderer.on(channel, (_event, ...args) => func(...args));
+  },
+  removeListener: (channel, func) => ipcRenderer.removeListener(channel, func),
   removeAllListeners: (channel) => {
-    console.log(`Removing all listeners for: ${channel}`); // Debug log
+    console.log(`[Preload] Removing all listeners for channel: ${channel}`);
     ipcRenderer.removeAllListeners(channel);
   },
 });
