@@ -58,6 +58,13 @@ ipcMain.on('navigate', (event, page) => {
   }
 });
 
+// IPC Listener: Show Interview Screen with Topic and Difficulty
+ipcMain.on('show-interview-screen', (event, data) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('show-interview-screen', data);
+  }
+});
+
 // Handle app ready event
 app.whenReady().then(() => {
   createMainWindow();

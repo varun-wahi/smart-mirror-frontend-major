@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('api', {
   send: (channel, data) => {
     console.log(`Sending: ${channel}, Data:`, data); // Debug log
     const validChannels = ['navigate', 'control-action'];
+    // const validChannels = ['navigate', 'control-action', 'show-interview-screen'];
     if (validChannels.includes(channel)) {
       ipcRenderer.send(channel, data);
     }
@@ -15,6 +16,8 @@ contextBridge.exposeInMainWorld('api', {
   on: (channel, callback) => {
     console.log(`Listening for: ${channel}`); // Debug log
     const validChannels = ['navigate', 'control-action'];
+    // const validChannels = ['navigate', 'control-action', 'show-interview-screen'];
+
     if (validChannels.includes(channel)) {
       ipcRenderer.on(channel, (event, ...args) => callback(...args));
     }

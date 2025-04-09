@@ -1,50 +1,47 @@
 import React, { useState, useEffect } from "react";
+import { useInterview } from "../utils/InterviewContext";
+
 
 const InterviewPracticePage = () => {
-  const [questions, setQuestions] = useState(null); // Cached questions
-  const [loading, setLoading] = useState(true); // Loading state
-  const [error, setError] = useState(null); // Error handling
+  const { interviewData } = useInterview();
+  const { topic, difficulty, questionCount } = interviewData;
 
+  const [questions, setQuestions] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const url = process.env.REACT_APP_LOCAL_BACKEND_URL || "http://localhost:5020";
-  // const url = process.env.REACT_APP_BACKEND_URL || "https://smart-mirror-backend.vercel.app";
 
-  // Function to fetch questions from the API
   const fetchQuestions = async () => {
     setLoading(true);
-    setError(null); // Reset error state
+    setError(null);
+    console.log("Fetching questions...");
+    console.log("No of questions:", questionCount);
     try {
       const response = await fetch(`${url}/api/interview/questions`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic: "React js",
-          difficulty: "intermediate",
-          numQuestions: 10,
+          topic,
+          difficulty: difficulty.toLowerCase(), // Convert to lowercase if needed
+          numQuestions: questionCount,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch questions");
-      }
+      if (!response.ok) throw new Error("Failed to fetch questions");
 
       const data = await response.json();
       setQuestions(data.questions);
     } catch (err) {
       setError(err.message || "Something went wrong");
     } finally {
-      setLoading(false); // End loading state
+      setLoading(false);
     }
   };
 
-  // Fetch questions on initial load
   useEffect(() => {
-    if (!questions) {
-      fetchQuestions();
-    }
-  }, []);
+    fetchQuestions();
+  }, [topic, difficulty, questionCount]);
 
   // Render loading spinner
   if (loading) {
