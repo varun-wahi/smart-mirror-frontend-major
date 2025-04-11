@@ -2,13 +2,17 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 console.log('Preload script loaded successfully');
 
-const validSendChannels = ['navigate', 'control-action', 'show-interview-screen', 'interview-data', 'question-index'];
-const validReceiveChannels = ['navigate', 'control-action', 'show-interview-screen', 'interview-data', 'question-index'];
+const validSendChannels = ['navigate', 'control-action', 'show-interview-screen', 'interview-data', 'question-index', 'speak-question'];
+const validReceiveChannels = [...validSendChannels];
 
 contextBridge.exposeInMainWorld('api', {
   send: (channel, data) => {
     if (validSendChannels.includes(channel)) {
-      console.log(`[Preload] Sending through channel: ${channel}`, data);
+      if (data !== undefined) {
+        console.log(`[Preload] Sending through channel: ${channel} with data:`, data);
+      } else {
+        console.log(`[Preload] Sending through channel: ${channel}`);
+      }
       ipcRenderer.send(channel, data);
     } else {
       console.warn(`[Preload] Attempted to send through invalid channel: ${channel}`);
@@ -23,11 +27,15 @@ contextBridge.exposeInMainWorld('api', {
     }
   },
   receive: (channel, func) => {
-    ipcRenderer.on(channel, (_event, ...args) => func(...args));
+    if (validReceiveChannels.includes(channel)) {
+      ipcRenderer.on(channel, (_event, ...args) => func(...args));
+    }
   },
   removeListener: (channel, func) => ipcRenderer.removeListener(channel, func),
   removeAllListeners: (channel) => {
-    console.log(`[Preload] Removing all listeners for channel: ${channel}`);
-    ipcRenderer.removeAllListeners(channel);
+    if (validReceiveChannels.includes(channel)) {
+      console.log(`[Preload] Removing all listeners for channel: ${channel}`);
+      ipcRenderer.removeAllListeners(channel);
+    }
   },
 });

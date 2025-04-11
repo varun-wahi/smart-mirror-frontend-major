@@ -21,6 +21,10 @@ function createMainWindow() {
 
   // Open DevTools for debugging (optional, remove in production)
   mainWindow.webContents.openDevTools({ mode: 'detach' });
+  
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 }
 
 // Create the control window (Controller App)
@@ -45,52 +49,73 @@ function createControlWindow() {
   // Open DevTools for debugging
   controlWindow.webContents.openDevTools({ mode: 'detach' });
 
-  // Log errors to console
-  controlWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-    console.error('Control Window failed to load:', errorDescription);
-  });
-
-  ipcMain.on("question-index", (event, payload) => {
-    console.log("[Main] Received question index:", payload);
-    mainWindow.webContents.send("question-index", payload);
+  controlWindow.on('closed', () => {
+    controlWindow = null;
   });
 }
 
-// IPC Listener: Forward navigation commands to the main window
-ipcMain.on('navigate', (event, page) => {
-  if (mainWindow) {
-    mainWindow.webContents.send('navigate', page); // Send the navigation command to the main window
-  }
-});
+// Setup IPC communication channels
+function setupIPCChannels() {
+  // Handle navigation requests
+  ipcMain.on('navigate', (event, page) => {
+    if (mainWindow) {
+      console.log("[Main] Forwarding navigation command:", page);
+      mainWindow.webContents.send('navigate', page);
+    }
+  });
 
-ipcMain.on('show-interview-screen', (event, data) => {
-  if (mainWindow) {
-    mainWindow.webContents.send('navigate', { path: '/interview-practice' });
-    mainWindow.webContents.send('show-interview-screen', data);
-  }
+  // Handle interview screen setup
+  ipcMain.on('show-interview-screen', (event, data) => {
+    console.log("[Main] Received show-interview-screen with data:", data);
+    
+    if (mainWindow) {
+      // First navigate to the interview practice page
+      mainWindow.webContents.send('navigate', { path: '/interview-practice' });
+      
+      // Give a slight delay to ensure navigation completes
+      setTimeout(() => {
+        mainWindow.webContents.send('show-interview-screen', data);
+      }, 100);
+    }
+  });
 
-  if (controlWindow) {
-    controlWindow.webContents.send('interview-data', data); // ✅ send to controller
-  }
-});
+  // Forward interview data to controller window
+  ipcMain.on('interview-data', (event, data) => {
+    console.log("[Main] Forwarding interview data to controller:", data);
+    if (controlWindow) {
+      controlWindow.webContents.send('interview-data', data);
+    }
+  });
 
-// // IPC Listener: Show Interview Screen with Topic and Difficulty
-// ipcMain.on('show-interview-screen', (event, data) => {
-//   if (mainWindow) {
-//     mainWindow.webContents.send('show-interview-screen', data);
-//   }
-// });
+  // Forward question index from controller to main window
+  ipcMain.on('question-index', (event, payload) => {
+    console.log("[Main] Forwarding question index:", payload);
+    if (mainWindow) {
+      mainWindow.webContents.send('question-index', payload);
+    }
+  });
+
+  // Forward speak command from controller to main window
+  ipcMain.on('speak-question', (event) => {
+    console.log("[Main] Forwarding speak command");
+    if (mainWindow) {
+      mainWindow.webContents.send('speak-question');
+    }
+  });
+}
 
 // Handle app ready event
 app.whenReady().then(() => {
   createMainWindow();
   createControlWindow();
+  setupIPCChannels();
 
   // Re-create windows if the app is activated after being closed (macOS-specific behavior)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createMainWindow();
       createControlWindow();
+      setupIPCChannels();
     }
   });
 });
