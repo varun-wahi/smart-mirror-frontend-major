@@ -144,12 +144,7 @@ const InterviewPracticePage = () => {
 
        
 
-        <button 
-          onClick={() => speakQuestion(question.question)}
-          className="bg-green-600 hover:bg-green-500 text-white py-2 px-6 rounded-md"
-        >
-          Read Question Again
-        </button>
+        
       </div>
     </div>
   );

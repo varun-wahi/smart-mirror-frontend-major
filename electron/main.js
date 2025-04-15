@@ -3,6 +3,39 @@ const path = require('path');
 
 let mainWindow;
 let controlWindow;
+// In your main.js or preload.js file
+
+const { ipcMain } = require('electron');
+const { transcribeAudio, initializeVOSK } = require('./transcriptionHandler');
+
+// Initialize VOSK when the app starts
+app.whenReady().then(() => {
+  // Other initialization code...
+  
+  // Initialize VOSK
+  initializeVOSK();
+});
+
+// Set up IPC handler for transcription
+ipcMain.on('transcribe-audio', async (event, { audio, questionIndex, language }) => {
+  try {
+    console.log(`Transcribing audio for question ${questionIndex}`);
+    const result = await transcribeAudio(audio, language || 'en-IN');
+    
+    // Send transcription result back to renderer
+    event.sender.send('transcription-result', { 
+      text: result.text,
+      questionIndex: questionIndex
+    });
+  } catch (error) {
+    console.error('Transcription error:', error);
+    event.sender.send('transcription-result', { 
+      text: "Error transcribing audio: " + error.message,
+      questionIndex: questionIndex,
+      error: true
+    });
+  }
+});
 
 // Create the main window (Main App)
 function createMainWindow() {
