@@ -49,6 +49,8 @@ const QuestionNavigatorPage = () => {
       if (idx === currentIndexRef.current) {
         setTranscription(result.text);
       }
+      // Save transcriptions to sessionStorage
+      sessionStorage.setItem('transcriptions', JSON.stringify(updated));
       playTranscribedAudio(result.text);
       setRecordingState("idle");
     });
@@ -98,6 +100,10 @@ const QuestionNavigatorPage = () => {
       setCurrentIndex(newIndex);
       setTranscription(transcriptionsRef.current[newIndex] || "");
       sendQuestionIndex(newIndex);
+    }
+    else if (currentIndex >= interviewData.questions.length - 1) {
+      // When the last question is done, navigate to review answers page
+      navigate('/review-answers');
     }
   };
 
@@ -264,30 +270,42 @@ const QuestionNavigatorPage = () => {
         </div>
 
         <div className="w-full flex justify-between gap-6 max-w-3xl">
-          <button
-            onClick={handlePrev}
-            disabled={currentIndex === 0 || totalQuestions === 0 || recordingState === "transcribing"}
-            className={`flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition border-3 ${
-              currentIndex === 0 || totalQuestions === 0 || recordingState === "transcribing"
-                ? "bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-500 text-white border-blue-400"
-            }`}
-          >
-            Previous
-          </button>
+  <button
+    onClick={handlePrev}
+    disabled={currentIndex === 0 || totalQuestions === 0 || recordingState === "transcribing"}
+    className={`flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition border-3 ${
+      currentIndex === 0 || totalQuestions === 0 || recordingState === "transcribing"
+        ? "bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed"
+        : "bg-blue-600 hover:bg-blue-500 text-white border-blue-400"
+    }`}
+  >
+    Previous
+  </button>
 
-          <button
-            onClick={handleNext}
-            disabled={currentIndex >= totalQuestions - 1 || totalQuestions === 0 || recordingState === "transcribing"}
-            className={`flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition border-3 ${
-              currentIndex >= totalQuestions - 1 || totalQuestions === 0 || recordingState === "transcribing"
-                ? "bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed"
-                : "bg-teal-600 hover:bg-teal-500 text-white border-teal-400"
-            }`}
-          >
-            Next
-          </button>
-        </div>
+  {currentIndex >= totalQuestions - 1 ? (
+    // If the user is on the last question, show the "Review" button
+    <button
+      onClick={() => navigate('/review-answers')} // Navigate to the Review Answers screen
+      className="flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition bg-teal-600 hover:bg-teal-500 text-white border-teal-400"
+    >
+      Review
+    </button>
+  ) : (
+    // Otherwise, show the "Next" button
+    <button
+      onClick={handleNext}
+      disabled={currentIndex >= totalQuestions - 1 || totalQuestions === 0 || recordingState === "transcribing"}
+      className={`flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition border-3 ${
+        currentIndex >= totalQuestions - 1 || totalQuestions === 0 || recordingState === "transcribing"
+          ? "bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed"
+          : "bg-teal-600 hover:bg-teal-500 text-white border-teal-400"
+      }`}
+    >
+      Next
+    </button>
+  )}
+</div>
+
       </div>
     </div>
   );

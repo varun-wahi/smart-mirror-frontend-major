@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -13,10 +12,9 @@ const ReviewAnswersPage = () => {
       const parsedData = JSON.parse(storedData);
       setInterviewData(parsedData);
     }
-    
+
     const storedTranscriptions = JSON.parse(sessionStorage.getItem('transcriptions') || '{}');
     setTranscriptions(storedTranscriptions);
-
   }, []);
 
   const handleBackToHome = () => {
@@ -40,17 +38,16 @@ const ReviewAnswersPage = () => {
           Review your answers below:
         </div>
 
-        {interviewData?.questions?.map((question, index) => (
-          <div key={index} className="mb-4">
+        {interviewData?.questions?.map((qObj, index) => (
+          <div key={index} className="mb-6">
             <div className="bg-gray-800 p-4 rounded-lg">
-              <strong>Question:</strong> {question}
+              <strong>Question {index + 1}:</strong> {qObj.question}
             </div>
             <div className="bg-gray-700 p-4 mt-2 rounded-lg">
-              <strong>Transcription:</strong> {transcriptions[index] || "No transcription available"}
+              <strong>Your Answer:</strong> {transcriptions[index] || "No transcription available"}
             </div>
           </div>
         ))}
-
       </div>
     </div>
   );

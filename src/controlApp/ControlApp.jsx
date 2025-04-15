@@ -3,6 +3,7 @@ import TouchscreenAppGrid from "./pages/TouchScreenAppGrid.jsx";
 import MicControlPage from "./pages/MicControlPage.jsx";
 import TopicSelectionPage from "./pages/TopicSelectionPage.jsx";
 import QuestionNavigatorPage from "./pages/QuestionNavigatorPage.jsx";
+import ReviewAnswersPage from "./pages/ReviewAnswersPage.jsx";
 
 const ControlApp = () => {
   return (
@@ -12,6 +13,7 @@ const ControlApp = () => {
         <Route path="/mic" element={<MicControlPage />} />
         <Route path="/select-topic" element={<TopicSelectionPage navigate={window.history.back} />} />
         <Route path="/question-navigator" element={<QuestionNavigatorPage navigate={window.history.back} />} />
+        <Route path="/review-answers" element={<ReviewAnswersPage />} />
       </Routes>
     </Router>
   );
