@@ -1,41 +1,19 @@
 const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
+const fs = require('fs');
+const { execFile } = require('child_process');
 
 let mainWindow;
 let controlWindow;
-// In your main.js or preload.js file
 
-const { ipcMain } = require('electron');
-const { transcribeAudio, initializeVOSK } = require('./transcriptionHandler');
-
-// Initialize VOSK when the app starts
-app.whenReady().then(() => {
-  // Other initialization code...
-  
-  // Initialize VOSK
-  initializeVOSK();
-});
-
-// Set up IPC handler for transcription
-ipcMain.on('transcribe-audio', async (event, { audio, questionIndex, language }) => {
-  try {
-    console.log(`Transcribing audio for question ${questionIndex}`);
-    const result = await transcribeAudio(audio, language || 'en-IN');
-    
-    // Send transcription result back to renderer
-    event.sender.send('transcription-result', { 
-      text: result.text,
-      questionIndex: questionIndex
-    });
-  } catch (error) {
-    console.error('Transcription error:', error);
-    event.sender.send('transcription-result', { 
-      text: "Error transcribing audio: " + error.message,
-      questionIndex: questionIndex,
-      error: true
-    });
+// Create directory for recordings if it doesn't exist
+const ensureRecordingsDirectory = () => {
+  const recordingsDir = path.join(app.getPath('userData'), 'recordings');
+  if (!fs.existsSync(recordingsDir)) {
+    fs.mkdirSync(recordingsDir, { recursive: true });
   }
-});
+  return recordingsDir;
+};
 
 // Create the main window (Main App)
 function createMainWindow() {
@@ -133,6 +111,66 @@ function setupIPCChannels() {
     console.log("[Main] Forwarding speak command");
     if (mainWindow) {
       mainWindow.webContents.send('speak-question');
+    }
+  });
+
+  // Handle audio transcription requests using Python script
+  ipcMain.on('transcribe-audio', async (event, { buffer, questionIndex }) => {
+    try {
+      const recordingsDir = ensureRecordingsDirectory();
+      
+      // Generate unique filename with timestamp
+      const timestamp = new Date().getTime();
+      const audioFilePath = path.join(recordingsDir, `recording_q${questionIndex}_${timestamp}.webm`);
+      
+      // Write audio buffer to file
+      fs.writeFileSync(audioFilePath, Buffer.from(buffer));
+      console.log(`[Main] Audio saved to: ${audioFilePath}`);
+      
+      // Path to Python script
+      // const transcriptionScript = path.join(__dirname, 'scripts', 'transcription.py');
+      const transcriptionScript = '/Users/varunwahi/Development/Interview Prep/frontend/src/controlApp/scripts/transcription.py';
+      
+      // Determine correct Python command based on platform
+      const pythonCommand = process.platform === 'darwin' ? 'python3' : 'python';
+      
+      // Run Python script for transcription
+      console.log(`[Main] Running transcription script: ${pythonCommand} ${transcriptionScript} ${audioFilePath}`);
+      
+      execFile(pythonCommand, [transcriptionScript, audioFilePath, 'tiny.en'], (error, stdout, stderr) => {
+        if (error) {
+          console.error('[Main] Transcription error:', error);
+          console.error('[Main] Stderr:', stderr);
+          event.sender.send('transcription-complete', { 
+            success: false, 
+            error: error.message,
+            questionIndex
+          });
+          return;
+        }
+        
+        // Get transcription text from script output
+        const transcriptionText = stdout.trim();
+        console.log('[Main] Transcription output:', transcriptionText);
+        
+        // Send transcription back to renderer
+        event.sender.send('transcription-complete', { 
+          success: true, 
+          text: transcriptionText,
+          filePath: audioFilePath,
+          questionIndex
+        });
+        
+        console.log(`[Main] Transcription complete for question ${questionIndex}: "${transcriptionText}"`);
+      });
+      
+    } catch (error) {
+      console.error('[Main] Error processing audio:', error);
+      event.sender.send('transcription-complete', { 
+        success: false, 
+        error: error.message,
+        questionIndex
+      });
     }
   });
 }

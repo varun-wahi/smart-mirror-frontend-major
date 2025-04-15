@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 console.log('Preload script loaded successfully');
 
-const validSendChannels = ['navigate', 'control-action', 'show-interview-screen', 'interview-data', 'question-index', 'speak-question'];
+const validSendChannels = ['navigate', 'control-action', 'show-interview-screen', 'interview-data', 'question-index', 'speak-question', 'transcribe-audio','transcription-complete'];
 const validReceiveChannels = [...validSendChannels];
 
 contextBridge.exposeInMainWorld('api', {

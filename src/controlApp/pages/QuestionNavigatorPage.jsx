@@ -1,21 +1,38 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 const QuestionNavigatorPage = () => {
   const [interviewData, setInterviewData] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isMicOn, setIsMicOn] = useState(false);
+  const [recordingState, setRecordingState] = useState("idle");
+  const [transcriptions, setTranscriptions] = useState({});
+  const [transcription, setTranscription] = useState("");
+
+  const currentIndexRef = useRef(currentIndex);
+  const transcriptionsRef = useRef(transcriptions);
+
   const navigate = useNavigate();
-  const audioRef = React.useRef(null);
+  const audioRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   useEffect(() => {
-    audioRef.current = new Audio('sounds/mic_on.mp3');
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  useEffect(() => {
+    transcriptionsRef.current = transcriptions;
+  }, [transcriptions]);
+
+  useEffect(() => {
+    audioRef.current = new Audio("sounds/mic_on.mp3");
 
     const handleInterviewData = (data) => {
       console.log("[QuestionNavigatorPage] Received interview data:", data);
       if (data && data.questions && Array.isArray(data.questions)) {
         setInterviewData(data);
         setCurrentIndex(0);
+        setTranscription(transcriptionsRef.current[0] || "");
         setTimeout(() => sendQuestionIndex(0), 100);
       } else {
         console.error("[QuestionNavigatorPage] Invalid interview data format:", data);
@@ -24,7 +41,19 @@ const QuestionNavigatorPage = () => {
 
     window.api.on("interview-data", handleInterviewData);
 
-    const cachedData = sessionStorage.getItem('interviewData');
+    window.api.on("transcription-complete", (result) => {
+      console.log("[QuestionNavigatorPage] Transcription result:", result);
+      const idx = result.questionIndex;
+      const updated = { ...transcriptionsRef.current, [idx]: result.text };
+      setTranscriptions(updated);
+      if (idx === currentIndexRef.current) {
+        setTranscription(result.text);
+      }
+      playTranscribedAudio(result.text);
+      setRecordingState("idle");
+    });
+
+    const cachedData = sessionStorage.getItem("interviewData");
     if (cachedData) {
       try {
         const parsedData = JSON.parse(cachedData);
@@ -36,12 +65,16 @@ const QuestionNavigatorPage = () => {
 
     return () => {
       window.api.removeAllListeners("interview-data");
+      window.api.removeAllListeners("transcription-complete");
+      stopRecording();
+      setTranscriptions({});
+      setTranscription("");
     };
   }, []);
 
   useEffect(() => {
     if (interviewData) {
-      sessionStorage.setItem('interviewData', JSON.stringify(interviewData));
+      sessionStorage.setItem("interviewData", JSON.stringify(interviewData));
     }
   }, [interviewData]);
 
@@ -54,6 +87,7 @@ const QuestionNavigatorPage = () => {
     if (currentIndex > 0) {
       const newIndex = currentIndex - 1;
       setCurrentIndex(newIndex);
+      setTranscription(transcriptionsRef.current[newIndex] || "");
       sendQuestionIndex(newIndex);
     }
   };
@@ -62,6 +96,7 @@ const QuestionNavigatorPage = () => {
     if (interviewData && currentIndex < interviewData.questions.length - 1) {
       const newIndex = currentIndex + 1;
       setCurrentIndex(newIndex);
+      setTranscription(transcriptionsRef.current[newIndex] || "");
       sendQuestionIndex(newIndex);
     }
   };
@@ -70,11 +105,115 @@ const QuestionNavigatorPage = () => {
     window.api.send("speak-question");
   };
 
-  const handleToggleMic = () => {
-    setIsMicOn((prev) => !prev);
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(err => console.error("Mic sound error:", err));
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.start();
+      setRecordingState("recording");
+      setTranscription("");
+
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch((err) => console.error("Mic sound error:", err));
+      }
+
+      console.log("[QuestionNavigatorPage] Recording started");
+    } catch (error) {
+      console.error("[QuestionNavigatorPage] Error starting recording:", error);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+
+      mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        saveRecording(audioBlob);
+        mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+        audioChunksRef.current = [];
+      };
+
+      console.log("[QuestionNavigatorPage] Recording stopped");
+    }
+  };
+
+  const saveRecording = async (audioBlob) => {
+    setRecordingState("transcribing");
+
+    try {
+      const reader = new FileReader();
+      reader.readAsArrayBuffer(audioBlob);
+
+      reader.onloadend = () => {
+        const arrayBuffer = reader.result;
+        window.api.send("transcribe-audio", {
+          buffer: arrayBuffer,
+          questionIndex: currentIndexRef.current,
+        });
+
+        console.log("[QuestionNavigatorPage] Audio sent for transcription");
+      };
+    } catch (error) {
+      console.error("[QuestionNavigatorPage] Error saving recording:", error);
+      setRecordingState("idle");
+    }
+  };
+
+  const playTranscribedAudio = (text) => {
+    console.log("[QuestionNavigatorPage] Transcribed text:", text);
+
+    if (audioChunksRef.current.length > 0) {
+      const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+      const audio = new Audio(URL.createObjectURL(audioBlob));
+      audio.play();
+
+      audio.onended = () => {
+        const utterance = new SpeechSynthesisUtterance("Answer transcribed");
+        speechSynthesis.speak(utterance);
+      };
+    } else {
+      const utterance = new SpeechSynthesisUtterance("Answer transcribed");
+      speechSynthesis.speak(utterance);
+    }
+  };
+
+  const handleToggleRecording = () => {
+    if (recordingState === "idle") {
+      startRecording();
+    } else if (recordingState === "recording") {
+      stopRecording();
+    }
+  };
+
+  const getRecordButtonText = () => {
+    switch (recordingState) {
+      case "recording":
+        return "Stop Recording";
+      case "transcribing":
+        return "Transcribing...";
+      default:
+        return "Start Recording";
+    }
+  };
+
+  const getRecordButtonClass = () => {
+    switch (recordingState) {
+      case "recording":
+        return "bg-red-600 hover:bg-red-500 border-2 border-red-400";
+      case "transcribing":
+        return "bg-yellow-600 border-2 border-yellow-400 cursor-wait";
+      default:
+        return "bg-gray-800 hover:bg-gray-700";
     }
   };
 
@@ -82,7 +221,6 @@ const QuestionNavigatorPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-900 text-white">
-      {/* Header */}
       <div className="p-4 md:p-6 border-b border-gray-700 flex flex-col md:flex-row items-center justify-between gap-4">
         <button
           onClick={() => navigate("/")}
@@ -96,56 +234,53 @@ const QuestionNavigatorPage = () => {
         </div>
       </div>
 
-      {/* Main */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <div className="mb-8 text-base md:text-lg bg-gray-800 px-6 py-3 rounded-full">
           Question {totalQuestions > 0 ? currentIndex + 1 : 0} of {totalQuestions}
         </div>
 
-        {/* Action Buttons - Speak and Mic */}
+        {transcription && (
+          <div className="mb-8 bg-gray-800 p-4 rounded-lg text-base max-w-3xl w-full">
+            <strong>Transcription:</strong> {transcription}
+          </div>
+        )}
+
         <div className="w-full max-w-md mx-auto mb-12 space-y-6">
-          {/* Speak Button */}
           <button
             onClick={handleSpeakQuestion}
             className="w-full bg-gray-800 hover:bg-gray-700 text-white text-xl font-medium py-6 rounded-lg transition"
+            disabled={recordingState === "transcribing"}
           >
-             Read Question
+            Read Question
           </button>
 
-          {/* Mic Button */}
           <button
-            onClick={handleToggleMic}
-            className={`w-full text-xl font-medium py-6 rounded-lg transition ${
-              isMicOn 
-                ? "bg-red-600 hover:bg-red-500 border-2 border-red-400" 
-                : "bg-gray-800 hover:bg-gray-700"
-            }`}
+            onClick={handleToggleRecording}
+            disabled={recordingState === "transcribing"}
+            className={`w-full text-xl font-medium py-6 rounded-lg transition ${getRecordButtonClass()}`}
           >
-            {isMicOn ? " Stop Recording" : " Start Recording"}
+            {getRecordButtonText()}
           </button>
         </div>
 
-        {/* Navigation Buttons - Previous and Next in a single row */}
         <div className="w-full flex justify-between gap-6 max-w-3xl">
-          {/* Prev Button - More prominent */}
           <button
             onClick={handlePrev}
-            disabled={currentIndex === 0 || totalQuestions === 0}
+            disabled={currentIndex === 0 || totalQuestions === 0 || recordingState === "transcribing"}
             className={`flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition border-3 ${
-              currentIndex === 0 || totalQuestions === 0
+              currentIndex === 0 || totalQuestions === 0 || recordingState === "transcribing"
                 ? "bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-500 text-white border-blue-400"
             }`}
           >
-             Previous 
+            Previous
           </button>
 
-          {/* Next Button - More prominent */}
           <button
             onClick={handleNext}
-            disabled={currentIndex >= totalQuestions - 1 || totalQuestions === 0}
+            disabled={currentIndex >= totalQuestions - 1 || totalQuestions === 0 || recordingState === "transcribing"}
             className={`flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition border-3 ${
-              currentIndex >= totalQuestions - 1 || totalQuestions === 0
+              currentIndex >= totalQuestions - 1 || totalQuestions === 0 || recordingState === "transcribing"
                 ? "bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed"
                 : "bg-teal-600 hover:bg-teal-500 text-white border-teal-400"
             }`}
