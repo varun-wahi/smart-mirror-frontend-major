@@ -18,21 +18,24 @@ const ensureRecordingsDirectory = () => {
 // Create the main window (Main App)
 function createMainWindow() {
   mainWindow = new BrowserWindow({
-    fullscreen: true, // Fullscreen for the main window
+    // fullscreen: true, // Fullscreen for the main window
+    fullscreen: false, // Set to false for easier testing on same screen
+    width: 800,
+    height: 800,
+    x: 700, // Position within the main display for testing
+    y: 50,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true, // Ensures a secure environment
-      nodeIntegration: false, // Prevent Node.js access in the renderer process
-      enableWebRTC: true, // Enable WebRTC for camera access
-      webSecurity: false, // Allow local resources (only disable for testing)
+      contextIsolation: true,
+      nodeIntegration: false,
+      enableWebRTC: true,
+      webSecurity: false,
     },
   });
 
-  mainWindow.loadFile(path.join(__dirname, '../dist/index.html')); // Main app entry
+  mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+  // mainWindow.webContents.openDevTools({ mode: 'detach' });
 
-  // Open DevTools for debugging (optional, remove in production)
-  mainWindow.webContents.openDevTools({ mode: 'detach' });
-  
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -40,24 +43,24 @@ function createMainWindow() {
 
 // Create the control window (Controller App)
 function createControlWindow() {
-  const displays = screen.getAllDisplays(); // Get all available displays
-  const externalDisplay = displays.find((display) => display.bounds.x !== 0); // Find secondary monitor
+  // const displays = screen.getAllDisplays();
+  // const externalDisplay = displays.find((display) => display.bounds.x !== 0);
 
   controlWindow = new BrowserWindow({
-    fullscreen: true, // Fullscreen for the control window
-    x: externalDisplay ? externalDisplay.bounds.x : 0, // Place on external monitor if available
-    y: externalDisplay ? externalDisplay.bounds.y : 0,
+    fullscreen: false, // Set to false for easier testing on same screen
+    width: 600,
+    height: 800,
+    x: 20, // Position within the main display for testing
+    y: 50,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true, // Ensures a secure environment
+      contextIsolation: true,
       nodeIntegration: false,
-      enableWebRTC: true, // Enable WebRTC for camera access
+      enableWebRTC: true,
     },
   });
 
-  controlWindow.loadFile(path.join(__dirname, '../dist/control.html')); // Control app entry
-
-  // Open DevTools for debugging
+  controlWindow.loadFile(path.join(__dirname, '../dist/control.html'));
   controlWindow.webContents.openDevTools({ mode: 'detach' });
 
   controlWindow.on('closed', () => {
