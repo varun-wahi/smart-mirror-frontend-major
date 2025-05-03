@@ -5,7 +5,10 @@ const QuestionNavigatorPage = () => {
   const [interviewData, setInterviewData] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [recordingState, setRecordingState] = useState("idle");
-  const [transcriptions, setTranscriptions] = useState({});
+  const [transcriptions, setTranscriptions] = useState(() => {
+    const saved = sessionStorage.getItem("transcriptions");
+    return saved ? JSON.parse(saved) : {};
+  });
   const [transcription, setTranscription] = useState("");
 
   const currentIndexRef = useRef(currentIndex);
@@ -16,15 +19,20 @@ const QuestionNavigatorPage = () => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
+  // Update refs when state changes
   useEffect(() => {
     currentIndexRef.current = currentIndex;
   }, [currentIndex]);
 
   useEffect(() => {
     transcriptionsRef.current = transcriptions;
+    // Save transcriptions to sessionStorage whenever they change
+    sessionStorage.setItem('transcriptions', JSON.stringify(transcriptions));
   }, [transcriptions]);
 
+  // Initialize and set up event listeners
   useEffect(() => {
+    // Load audio feedback sound
     audioRef.current = new Audio("sounds/mic_on.mp3");
 
     const handleInterviewData = (data) => {
@@ -32,29 +40,43 @@ const QuestionNavigatorPage = () => {
       if (data && data.questions && Array.isArray(data.questions)) {
         setInterviewData(data);
         setCurrentIndex(0);
-        setTranscription(transcriptionsRef.current[0] || "");
+        
+        // Set initial transcription if available
+        const savedTranscriptions = transcriptionsRef.current;
+        setTranscription(savedTranscriptions[0] || "");
+        
+        // Send initial question index to main process
         setTimeout(() => sendQuestionIndex(0), 100);
       } else {
         console.error("[QuestionNavigatorPage] Invalid interview data format:", data);
       }
     };
 
+    // Set up event listeners for communication with main process
     window.api.on("interview-data", handleInterviewData);
 
+    // Handle transcription results coming back from main process
     window.api.on("transcription-complete", (result) => {
       console.log("[QuestionNavigatorPage] Transcription result:", result);
+      
+      // Update transcriptions state with new result
       const idx = result.questionIndex;
       const updated = { ...transcriptionsRef.current, [idx]: result.text };
       setTranscriptions(updated);
+      
+      // Update current transcription if user is still on the same question
       if (idx === currentIndexRef.current) {
         setTranscription(result.text);
       }
-      // Save transcriptions to sessionStorage
-      sessionStorage.setItem('transcriptions', JSON.stringify(updated));
+      
+      // Play audio feedback
       playTranscribedAudio(result.text);
+      
+      // Reset recording state
       setRecordingState("idle");
     });
 
+    // Load cached interview data if available
     const cachedData = sessionStorage.getItem("interviewData");
     if (cachedData) {
       try {
@@ -65,26 +87,28 @@ const QuestionNavigatorPage = () => {
       }
     }
 
+    // Clean up on unmount
     return () => {
       window.api.removeAllListeners("interview-data");
       window.api.removeAllListeners("transcription-complete");
       stopRecording();
-      setTranscriptions({});
-      setTranscription("");
     };
   }, []);
 
+  // Save interview data to session storage when it changes
   useEffect(() => {
     if (interviewData) {
       sessionStorage.setItem("interviewData", JSON.stringify(interviewData));
     }
   }, [interviewData]);
 
+  // Helper function to send current question index to main process
   const sendQuestionIndex = (index) => {
     if (!interviewData?.questions) return;
     window.api.send("question-index", { index });
   };
 
+  // Navigation handlers
   const handlePrev = () => {
     if (currentIndex > 0) {
       const newIndex = currentIndex - 1;
@@ -100,33 +124,49 @@ const QuestionNavigatorPage = () => {
       setCurrentIndex(newIndex);
       setTranscription(transcriptionsRef.current[newIndex] || "");
       sendQuestionIndex(newIndex);
-    }
-    else if (currentIndex >= interviewData.questions.length - 1) {
+    } else if (interviewData && currentIndex >= interviewData.questions.length - 1) {
       // When the last question is done, navigate to review answers page
       navigate('/review-answers');
     }
   };
 
+  // Trigger text-to-speech for current question
   const handleSpeakQuestion = () => {
     window.api.send("speak-question");
   };
 
+  // Recording functionality
   const startRecording = async () => {
     try {
+      // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
       audioChunksRef.current = [];
 
+      // Set up data collection
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
+      // Set up stop handler
+      mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        saveRecording(audioBlob);
+        
+        // Clean up media tracks
+        mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+      };
+
+      // Start recording
       mediaRecorderRef.current.start();
       setRecordingState("recording");
+      
+      // Clear current transcription while recording
       setTranscription("");
 
+      // Play audio feedback
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch((err) => console.error("Mic sound error:", err));
@@ -135,24 +175,18 @@ const QuestionNavigatorPage = () => {
       console.log("[QuestionNavigatorPage] Recording started");
     } catch (error) {
       console.error("[QuestionNavigatorPage] Error starting recording:", error);
+      setRecordingState("idle");
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop();
-
-      mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        saveRecording(audioBlob);
-        mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
-        audioChunksRef.current = [];
-      };
-
       console.log("[QuestionNavigatorPage] Recording stopped");
     }
   };
 
+  // Send audio data to main process for transcription
   const saveRecording = async (audioBlob) => {
     setRecordingState("transcribing");
 
@@ -162,6 +196,8 @@ const QuestionNavigatorPage = () => {
 
       reader.onloadend = () => {
         const arrayBuffer = reader.result;
+        
+        // Send to main process for transcription
         window.api.send("transcribe-audio", {
           buffer: arrayBuffer,
           questionIndex: currentIndexRef.current,
@@ -175,24 +211,16 @@ const QuestionNavigatorPage = () => {
     }
   };
 
+  // Play audio feedback after transcription
   const playTranscribedAudio = (text) => {
     console.log("[QuestionNavigatorPage] Transcribed text:", text);
 
-    if (audioChunksRef.current.length > 0) {
-      const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-      const audio = new Audio(URL.createObjectURL(audioBlob));
-      audio.play();
-
-      audio.onended = () => {
-        const utterance = new SpeechSynthesisUtterance("Answer transcribed");
-        speechSynthesis.speak(utterance);
-      };
-    } else {
-      const utterance = new SpeechSynthesisUtterance("Answer transcribed");
-      speechSynthesis.speak(utterance);
-    }
+    // Speak confirmation using speech synthesis
+    const utterance = new SpeechSynthesisUtterance("Answer transcribed");
+    speechSynthesis.speak(utterance);
   };
 
+  // Toggle recording state
   const handleToggleRecording = () => {
     if (recordingState === "idle") {
       startRecording();
@@ -201,6 +229,7 @@ const QuestionNavigatorPage = () => {
     }
   };
 
+  // UI helper functions
   const getRecordButtonText = () => {
     switch (recordingState) {
       case "recording":
@@ -224,6 +253,7 @@ const QuestionNavigatorPage = () => {
   };
 
   const totalQuestions = interviewData?.questions?.length || 0;
+  const isLastQuestion = currentIndex >= totalQuestions - 1;
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-900 text-white">
@@ -270,42 +300,44 @@ const QuestionNavigatorPage = () => {
         </div>
 
         <div className="w-full flex justify-between gap-6 max-w-3xl">
-  <button
-    onClick={handlePrev}
-    disabled={currentIndex === 0 || totalQuestions === 0 || recordingState === "transcribing"}
-    className={`flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition border-3 ${
-      currentIndex === 0 || totalQuestions === 0 || recordingState === "transcribing"
-        ? "bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed"
-        : "bg-blue-600 hover:bg-blue-500 text-white border-blue-400"
-    }`}
-  >
-    Previous
-  </button>
+          <button
+            onClick={handlePrev}
+            disabled={currentIndex === 0 || totalQuestions === 0 || recordingState === "transcribing" || recordingState === "recording"}
+            className={`flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition border-3 ${
+              currentIndex === 0 || totalQuestions === 0 || recordingState === "transcribing" || recordingState === "recording"
+                ? "bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-500 text-white border-blue-400"
+            }`}
+          >
+            Previous
+          </button>
 
-  {currentIndex >= totalQuestions - 1 ? (
-    // If the user is on the last question, show the "Review" button
-    <button
-      onClick={() => navigate('/review-answers')} // Navigate to the Review Answers screen
-      className="flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition bg-teal-600 hover:bg-teal-500 text-white border-teal-400"
-    >
-      Review
-    </button>
-  ) : (
-    // Otherwise, show the "Next" button
-    <button
-      onClick={handleNext}
-      disabled={currentIndex >= totalQuestions - 1 || totalQuestions === 0 || recordingState === "transcribing"}
-      className={`flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition border-3 ${
-        currentIndex >= totalQuestions - 1 || totalQuestions === 0 || recordingState === "transcribing"
-          ? "bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed"
-          : "bg-teal-600 hover:bg-teal-500 text-white border-teal-400"
-      }`}
-    >
-      Next
-    </button>
-  )}
-</div>
-
+          {isLastQuestion ? (
+            <button
+              onClick={() => navigate('/review-answers')}
+              disabled={recordingState === "transcribing" || recordingState === "recording"}
+              className={`flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition ${
+                recordingState === "transcribing" || recordingState === "recording"
+                  ? "bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed"
+                  : "bg-teal-600 hover:bg-teal-500 text-white border-teal-400"
+              }`}
+            >
+              Review
+            </button>
+          ) : (
+            <button
+              onClick={handleNext}
+              disabled={isLastQuestion || totalQuestions === 0 || recordingState === "transcribing" || recordingState === "recording"}
+              className={`flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition border-3 ${
+                isLastQuestion || totalQuestions === 0 || recordingState === "transcribing" || recordingState === "recording"
+                  ? "bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed"
+                  : "bg-teal-600 hover:bg-teal-500 text-white border-teal-400"
+              }`}
+            >
+              Next
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
