@@ -34,7 +34,7 @@ function createMainWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
-  mainWindow.webContents.openDevTools({ mode: 'detach' });
+  // mainWindow.webContents.openDevTools({ mode: 'detach' });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -61,7 +61,7 @@ function createControlWindow() {
   });
 
   controlWindow.loadFile(path.join(__dirname, '../dist/control.html'));
-  controlWindow.webContents.openDevTools({ mode: 'detach' });
+  // controlWindow.webContents.openDevTools({ mode: 'detach' });
 
   controlWindow.on('closed', () => {
     controlWindow = null;
@@ -132,10 +132,11 @@ function setupIPCChannels() {
       
       // Path to Python script
       // const transcriptionScript = path.join(__dirname, 'scripts', 'transcription.py');
-      const transcriptionScript = '/Users/varunwahi/Development/Interview Prep/frontend/src/controlApp/scripts/transcription.py';
+      const transcriptionScript = '/Users/varunwahi/Development/Interview_Prep/frontend/src/controlApp/scripts/transcription.py';
       
       // Determine correct Python command based on platform
-      const pythonCommand = process.platform === 'darwin' ? 'python3' : 'python';
+      // const pythonCommand = process.platform === 'darwin' ? 'python3' : 'python';
+      const pythonCommand = '/Users/varunwahi/Development/Interview_Prep/frontend/whisper-env/bin/python3';
       
       // Run Python script for transcription
       console.log(`[Main] Running transcription script: ${pythonCommand} ${transcriptionScript} ${audioFilePath}`);

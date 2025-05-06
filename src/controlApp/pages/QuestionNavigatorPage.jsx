@@ -154,6 +154,8 @@ const QuestionNavigatorPage = () => {
       mediaRecorderRef.current.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         saveRecording(audioBlob);
+
+        console.log("[Recorder] Audio blob size:", audioBlob.size);
         
         // Clean up media tracks
         mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
