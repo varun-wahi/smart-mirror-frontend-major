@@ -5,6 +5,8 @@ const { execFile } = require('child_process');
 
 let mainWindow;
 let controlWindow;
+// Add this line to track current interview data
+let currentInterviewData = null;
 
 // Create directory for recordings if it doesn't exist
 const ensureRecordingsDirectory = () => {
@@ -82,6 +84,9 @@ function setupIPCChannels() {
   ipcMain.on('show-interview-screen', (event, data) => {
     console.log("[Main] Received show-interview-screen with data:", data);
     
+    // Store the data for later use (important for reconnections)
+    currentInterviewData = data;
+    
     if (mainWindow) {
       // First navigate to the interview practice page
       mainWindow.webContents.send('navigate', { path: '/interview-practice' });
@@ -96,6 +101,9 @@ function setupIPCChannels() {
   // Forward interview data to controller window
   ipcMain.on('interview-data', (event, data) => {
     console.log("[Main] Forwarding interview data to controller:", data);
+    // Store the data for later use
+    currentInterviewData = data;
+    
     if (controlWindow) {
       controlWindow.webContents.send('interview-data', data);
     }
@@ -117,6 +125,18 @@ function setupIPCChannels() {
     }
   });
 
+  // Handle ready-for-interview event from the interview practice page
+  ipcMain.on('ready-for-interview', (event) => {
+    console.log("[Main] Received ready-for-interview event");
+    // If we have cached interview data, send it immediately
+    if (currentInterviewData) {
+      console.log("[Main] Sending cached interview data to requester");
+      event.sender.send('show-interview-screen', currentInterviewData);
+    } else {
+      console.log("[Main] No cached interview data available yet");
+    }
+  });
+
   // Handle audio transcription requests using Python script
   ipcMain.on('transcribe-audio', async (event, { buffer, questionIndex }) => {
     try {
@@ -131,17 +151,23 @@ function setupIPCChannels() {
       console.log(`[Main] Audio saved to: ${audioFilePath}`);
       
       // Path to Python script
-      // const transcriptionScript = path.join(__dirname, 'scripts', 'transcription.py');
-      const transcriptionScript = '/Users/varunwahi/Development/Interview_Prep/frontend/src/controlApp/scripts/transcription.py';
+      // WHISPER IMPLEMENTATION (COMMENTED OUT)
+      // const transcriptionScript = '/Users/varunwahi/Development/Interview_Prep/frontend/src/controlApp/scripts/transcription.py';
+      // const pythonCommand = '/Users/varunwahi/Development/Interview_Prep/frontend/whisper-env/bin/python3';
       
-      // Determine correct Python command based on platform
-      // const pythonCommand = process.platform === 'darwin' ? 'python3' : 'python';
-      const pythonCommand = '/Users/varunwahi/Development/Interview_Prep/frontend/whisper-env/bin/python3';
+      // VOSK IMPLEMENTATION (NEW)
+      const transcriptionScript = '/Users/varunwahi/Development/Interview_Prep/frontend/src/controlApp/scripts/transcription_vosk.py';
+      // const pythonCommand = '/Users/varunwahi/Development/Interview_Prep/frontend/vosk-env/bin/python3';
+      // const pythonCommand = '/Users/varunwahi/Development/Interview_Prep/frontend/vosk-env/bin/python3';
+      const pythonCommand = 'python3.10';
+      
+      // Get the model path - adjust this to your actual model location
+      const voskModelPath = '/Users/varunwahi/Development/Interview_Prep/frontend/src/controlApp/scripts/voice_models/vosk-model-small-en-in-0.4';
       
       // Run Python script for transcription
-      console.log(`[Main] Running transcription script: ${pythonCommand} ${transcriptionScript} ${audioFilePath}`);
+      console.log(`[Main] Running Vosk transcription script: ${pythonCommand} ${transcriptionScript} ${audioFilePath} ${voskModelPath}`);
       
-      execFile(pythonCommand, [transcriptionScript, audioFilePath, 'tiny.en'], (error, stdout, stderr) => {
+      execFile(pythonCommand, [transcriptionScript, audioFilePath, voskModelPath], (error, stdout, stderr) => {
         if (error) {
           console.error('[Main] Transcription error:', error);
           console.error('[Main] Stderr:', stderr);
