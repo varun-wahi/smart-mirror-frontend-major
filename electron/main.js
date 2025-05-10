@@ -209,7 +209,7 @@ function setupIPCChannels() {
       // Path to Python script
       // const transcriptionScript = path.join(__dirname, 'scripts', 'transcription.py');
       // const transcriptionScript = '/Users/varunwahi/Development/Interview_Prep/frontend/src/controlApp/scripts/transcription.py';
-      const transcriptionScript = '/home/smartmirror/Desktop/SmartMirror/smart-mirror-major/src/controlApp/scripts/transcription.py';
+      const transcriptionScript = '/home/smartmirror/Desktop/SmartMirror/frontend/src/controlApp/scripts/transcription.py';
       
       // Determine correct Python command based on platform
       // const pythonCommand = process.platform === 'darwin' ? 'python3' : 'python';
