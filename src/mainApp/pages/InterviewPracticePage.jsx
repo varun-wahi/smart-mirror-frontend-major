@@ -94,7 +94,7 @@ const InterviewPracticePage = () => {
         clearTimeout(loadingTimeoutRef.current);
       }
       
-      await ensureVoicesLoaded();
+      // await ensureVoicesLoaded();
       
       // Cache the data in sessionStorage
       sessionStorage.setItem("interviewData", JSON.stringify(data));

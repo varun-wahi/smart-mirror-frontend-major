@@ -104,7 +104,7 @@ const QuestionNavigatorPage = () => {
       }
       
       // Play audio feedback
-      playTranscribedAudio(result.text);
+      // playTranscribedAudio(result.text);
       
       // Reset recording state
       setRecordingState("idle");
