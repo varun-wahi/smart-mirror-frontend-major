@@ -44,6 +44,7 @@ const FaceAuthenticationPage = () => {
           // Speak greeting
           speakGreeting(response.data.name);
           
+
           // Navigate to home page after 3 seconds
           setTimeout(() => {
             navigate("/");
@@ -75,7 +76,11 @@ const FaceAuthenticationPage = () => {
     return () => {
       clearInterval(pollingInterval);
     };
-  }, [API_URL, navigate, recognizedPerson, lastFaceDetectedTime]);
+// <<<<<<< test-frontend
+  }, [API_URL, navigate, recognizedPerson]);
+// =======
+//   }, [API_URL, navigate, recognizedPerson, lastFaceDetectedTime]);
+// >>>>>>> main
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-black text-white p-4">
