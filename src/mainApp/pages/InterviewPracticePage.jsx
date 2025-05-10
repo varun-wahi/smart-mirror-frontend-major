@@ -11,34 +11,34 @@ const InterviewPracticePage = () => {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
   
-    // // More natural settings
-    utterance.rate = 0.8;     // Normal speed
-    // utterance.pitch = 0.9;    // Slightly expressive
-    // utterance.volume = 1.0;   // Full volume
+    // More natural settings
+    utterance.rate = 1.0;     // Normal speed
+    utterance.pitch = 1.1;    // Slightly expressive
+    utterance.volume = 1.0;   // Full volume
   
-    // const preferredVoices = [
-    //   "Google UK English Female",
-    //   "Google US English",
-    //   "Microsoft Aria Online (Natural)",
-    //   "Microsoft Jenny Online (Natural)"
-    // ];
+    const preferredVoices = [
+      "Google UK English Female",
+      "Google US English",
+      "Microsoft Aria Online (Natural)",
+      "Microsoft Jenny Online (Natural)"
+    ];
   
-    // const voices = window.speechSynthesis.getVoices();
+    const voices = window.speechSynthesis.getVoices();
   
-    // if (voices.length > 0) {
-    //   const preferredVoice = voices.find((voice) =>
-    //     preferredVoices.includes(voice.name)
-    //   );
+    if (voices.length > 0) {
+      const preferredVoice = voices.find((voice) =>
+        preferredVoices.includes(voice.name)
+      );
   
-    //   if (preferredVoice) {
-    //     utterance.voice = preferredVoice;
-    //   } else {
-    //     const englishVoice = voices.find((voice) => voice.lang.startsWith("en"));
-    //     if (englishVoice) {
-    //       utterance.voice = englishVoice;
-    //     }
-    //   }
-    // }
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      } else {
+        const englishVoice = voices.find((voice) => voice.lang.startsWith("en"));
+        if (englishVoice) {
+          utterance.voice = englishVoice;
+        }
+      }
+    }
   
     window.speechSynthesis.speak(utterance);
   };
