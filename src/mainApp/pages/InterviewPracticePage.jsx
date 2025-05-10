@@ -70,7 +70,7 @@ const InterviewPracticePage = () => {
       if (!interviewData) {
         requestInterviewData();
       }
-    }, 3000); // Wait 3 seconds before requesting data
+    }, 5000); // Wait 3 seconds before requesting data
     
     // Check for cached data in sessionStorage
     const cachedData = sessionStorage.getItem("interviewData");

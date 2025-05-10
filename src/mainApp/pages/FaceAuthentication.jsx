@@ -13,15 +13,33 @@ const FaceAuthenticationPage = () => {
 
   // Backend API URL
   const API_URL = process.env.PYTHON_LOCAL_BACKEND_URL || "http://localhost:5030";
+  useEffect(() => {
+    // Start the camera on backend
+    const startCamera = async () => {
+      try {
+        await axios.post(`${API_URL}/start_camera`);
+        console.log("Camera started");
+  
+        // Delay showing the video feed
+        setTimeout(() => {
+          setShowVideo(true);
+        }, 5000); // 10 seconds
+      } catch (error) {
+        console.error("Failed to start camera:", error);
+      }
+    };
+  
+    startCamera();
+  }, []);
+  
+// useEffect(() => {
+//   // Delay showing the video feed
+//   const timeout = setTimeout(() => {
+//     setShowVideo(true);
+//   }, 5000); // 2 second delay
 
-useEffect(() => {
-  // Delay showing the video feed
-  const timeout = setTimeout(() => {
-    setShowVideo(true);
-  }, 2000); // 2 second delay
-
-  return () => clearTimeout(timeout);
-}, []);
+//   return () => clearTimeout(timeout);
+// }, []);
 
   useEffect(() => {
     // Function to speak greeting
@@ -52,14 +70,12 @@ useEffect(() => {
           setShowSuccess(true);
 
           // Speak greeting
-          speakGreeting(response.data.name);
+          // speakGreeting(response.data.name);
 
           // You could navigate to another page after delay
-          // setTimeout(() => {
-          //   navigate("/teacher-data", { 
-          //     state: { teacherData: { name: response.data.name } } 
-          //   });
-          // }, 3000);
+          setTimeout(() => {
+            navigate("/");
+          }, 3000);
         }
       } catch (error) {
         console.error("Error checking recognition:", error);
