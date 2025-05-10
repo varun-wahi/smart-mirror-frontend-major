@@ -4,6 +4,8 @@ const InterviewPracticePage = () => {
   const [interviewData, setInterviewData] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const previousIndexRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const loadingTimeoutRef = useRef(null);
 
   const speakQuestion = (text) => {
     if (!text) return;
@@ -54,13 +56,53 @@ const InterviewPracticePage = () => {
     });
   };
 
+  // Function to request data if it hasn't arrived after a timeout
+  const requestInterviewData = () => {
+    console.log("[InterviewPracticePage] Requesting interview data from main process");
+    window.api.send("request-interview-data");
+  };
+
   useEffect(() => {
+    setIsLoading(true);
+    
+    // Setup loading timeout to request data if not received
+    loadingTimeoutRef.current = setTimeout(() => {
+      if (!interviewData) {
+        requestInterviewData();
+      }
+    }, 3000); // Wait 3 seconds before requesting data
+    
+    // Check for cached data in sessionStorage
+    const cachedData = sessionStorage.getItem("interviewData");
+    if (cachedData) {
+      try {
+        console.log("[InterviewPracticePage] Using cached interview data");
+        const parsedData = JSON.parse(cachedData);
+        setInterviewData(parsedData);
+        setIsLoading(false);
+        clearTimeout(loadingTimeoutRef.current);
+      } catch (e) {
+        console.error("[InterviewPracticePage] Failed to parse cached data", e);
+      }
+    }
+
     const handleShowInterviewScreen = async (data) => {
       console.log("[InterviewPracticePage] Received interview data:", data);
-      await ensureVoicesLoaded();
+      
+      // Clear any loading timeout
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+      
+      // await ensureVoicesLoaded();
+      
+      // Cache the data in sessionStorage
+      sessionStorage.setItem("interviewData", JSON.stringify(data));
+      
       setInterviewData(data);
       setCurrentIndex(0);
       previousIndexRef.current = 0;
+      setIsLoading(false);
     };
 
     const handleQuestionIndex = (payload) => {
@@ -89,9 +131,12 @@ const InterviewPracticePage = () => {
       window.api.removeAllListeners("question-index");
       window.api.removeAllListeners("speak-question");
       window.speechSynthesis.cancel();
+      
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
     };
   }, [interviewData, currentIndex]);
-
 
   //! AUTOMATICALLY SPEAK QUESTION
   useEffect(() => {
@@ -101,10 +146,17 @@ const InterviewPracticePage = () => {
     }
   }, [interviewData, currentIndex]);
 
-  if (!interviewData) {
+  // Loading screen with retry button
+  if (isLoading || !interviewData) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <p className="text-gray-400">Waiting for questions from controller...</p>
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
+        <p className="text-gray-400 mb-4">Waiting for questions from controller...</p>
+        <button 
+          onClick={requestInterviewData} 
+          className="bg-blue-700 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
+        >
+          Retry Loading Questions
+        </button>
       </div>
     );
   }
@@ -141,10 +193,6 @@ const InterviewPracticePage = () => {
           </p>
           <p className="text-sm text-gray-400">{question.answer}</p>
         </div>
-
-       
-
-        
       </div>
     </div>
   );

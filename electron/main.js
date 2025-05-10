@@ -6,6 +6,14 @@ const { execFile } = require('child_process');
 let mainWindow;
 let controlWindow;
 
+// Track renderer process ready states
+let mainWindowReady = false;
+let controlWindowReady = false;
+
+// Message queues for pending messages
+const mainWindowMessageQueue = [];
+const controlWindowMessageQueue = [];
+
 // Create directory for recordings if it doesn't exist
 const ensureRecordingsDirectory = () => {
   const recordingsDir = path.join(app.getPath('userData'), 'recordings');
@@ -17,6 +25,8 @@ const ensureRecordingsDirectory = () => {
 
 // Create the main window (Main App)
 function createMainWindow() {
+  mainWindowReady = false; // Reset ready state
+  
   mainWindow = new BrowserWindow({
     // fullscreen: true, // Fullscreen for the main window
     fullscreen: false, // Set to false for easier testing on same screen
@@ -34,18 +44,18 @@ function createMainWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
-  // mainWindow.webContents.openDevTools({ mode: 'detach' });
+  mainWindow.webContents.openDevTools({ mode: 'detach' });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    mainWindowReady = false;
   });
 }
 
 // Create the control window (Controller App)
 function createControlWindow() {
-  // const displays = screen.getAllDisplays();
-  // const externalDisplay = displays.find((display) => display.bounds.x !== 0);
-
+  controlWindowReady = false; // Reset ready state
+  
   controlWindow = new BrowserWindow({
     fullscreen: false, // Set to false for easier testing on same screen
     width: 600,
@@ -65,56 +75,122 @@ function createControlWindow() {
 
   controlWindow.on('closed', () => {
     controlWindow = null;
+    controlWindowReady = false;
   });
+}
+
+// Helper to send messages to main window with queue fallback
+function sendToMainWindow(channel, data) {
+  if (mainWindow && mainWindowReady) {
+    console.log(`[Main] Sending to main window: ${channel}`);
+    mainWindow.webContents.send(channel, data);
+    return true;
+  } else {
+    console.log(`[Main] Queueing message for main window: ${channel}`);
+    mainWindowMessageQueue.push({ channel, data });
+    return false;
+  }
+}
+
+// Helper to send messages to control window with queue fallback
+function sendToControlWindow(channel, data) {
+  if (controlWindow && controlWindowReady) {
+    console.log(`[Main] Sending to control window: ${channel}`);
+    controlWindow.webContents.send(channel, data);
+    return true;
+  } else {
+    console.log(`[Main] Queueing message for control window: ${channel}`);
+    controlWindowMessageQueue.push({ channel, data });
+    return false;
+  }
+}
+
+// Process queued messages
+function processMessageQueues() {
+  // Process main window queue
+  if (mainWindow && mainWindowReady) {
+    while (mainWindowMessageQueue.length > 0) {
+      const { channel, data } = mainWindowMessageQueue.shift();
+      console.log(`[Main] Processing queued message for main window: ${channel}`);
+      mainWindow.webContents.send(channel, data);
+    }
+  }
+  
+  // Process control window queue
+  if (controlWindow && controlWindowReady) {
+    while (controlWindowMessageQueue.length > 0) {
+      const { channel, data } = controlWindowMessageQueue.shift();
+      console.log(`[Main] Processing queued message for control window: ${channel}`);
+      controlWindow.webContents.send(channel, data);
+    }
+  }
 }
 
 // Setup IPC communication channels
 function setupIPCChannels() {
+  // Handle renderer process ready signals
+  ipcMain.on('renderer-ready', (event, data) => {
+    const sender = event.sender;
+    
+    if (mainWindow && sender === mainWindow.webContents) {
+      console.log("[Main] Main window is ready");
+      mainWindowReady = true;
+    } else if (controlWindow && sender === controlWindow.webContents) {
+      console.log("[Main] Control window is ready");
+      controlWindowReady = true;
+    }
+    
+    // Process any queued messages now that renderer is ready
+    processMessageQueues();
+  });
+
   // Handle navigation requests
   ipcMain.on('navigate', (event, page) => {
-    if (mainWindow) {
-      console.log("[Main] Forwarding navigation command:", page);
-      mainWindow.webContents.send('navigate', page);
-    }
+    sendToMainWindow('navigate', page);
   });
 
   // Handle interview screen setup
   ipcMain.on('show-interview-screen', (event, data) => {
     console.log("[Main] Received show-interview-screen with data:", data);
     
-    if (mainWindow) {
-      // First navigate to the interview practice page
-      mainWindow.webContents.send('navigate', { path: '/interview-practice' });
-      
-      // Give a slight delay to ensure navigation completes
-      setTimeout(() => {
-        mainWindow.webContents.send('show-interview-screen', data);
-      }, 100);
-    }
+    // Store data for retry if needed
+    const interviewData = data;
+    
+    // First navigate to the interview practice page
+    sendToMainWindow('navigate', { path: '/interview-practice' });
+    
+    // Give a slight delay to ensure navigation completes before sending data
+    setTimeout(() => {
+      // Try to send data, if window isn't ready it will be queued
+      if (!sendToMainWindow('show-interview-screen', interviewData)) {
+        console.log("[Main] Interview window not ready, data queued");
+      }
+    }, 500); // Increased delay for slower devices
   });
 
   // Forward interview data to controller window
   ipcMain.on('interview-data', (event, data) => {
     console.log("[Main] Forwarding interview data to controller:", data);
-    if (controlWindow) {
-      controlWindow.webContents.send('interview-data', data);
-    }
+    sendToControlWindow('interview-data', data);
   });
 
   // Forward question index from controller to main window
   ipcMain.on('question-index', (event, payload) => {
     console.log("[Main] Forwarding question index:", payload);
-    if (mainWindow) {
-      mainWindow.webContents.send('question-index', payload);
-    }
+    sendToMainWindow('question-index', payload);
   });
 
   // Forward speak command from controller to main window
   ipcMain.on('speak-question', (event) => {
     console.log("[Main] Forwarding speak command");
-    if (mainWindow) {
-      mainWindow.webContents.send('speak-question');
-    }
+    sendToMainWindow('speak-question');
+  });
+
+  // Handle requests to resend data (for recovery)
+  ipcMain.on('request-interview-data', (event) => {
+    console.log("[Main] Received request to resend interview data");
+    // Process queued messages - this will send any pending data
+    processMessageQueues();
   });
 
   // Handle audio transcription requests using Python script
@@ -132,11 +208,13 @@ function setupIPCChannels() {
       
       // Path to Python script
       // const transcriptionScript = path.join(__dirname, 'scripts', 'transcription.py');
-      const transcriptionScript = '/Users/varunwahi/Development/Interview_Prep/frontend/src/controlApp/scripts/transcription.py';
+      // const transcriptionScript = '/Users/varunwahi/Development/Interview_Prep/frontend/src/controlApp/scripts/transcription.py';
+      const transcriptionScript = '/home/smartmirror/Desktop/SmartMirror/smart-mirror-major/src/controlApp/scripts/transcription.py';
       
       // Determine correct Python command based on platform
       // const pythonCommand = process.platform === 'darwin' ? 'python3' : 'python';
-      const pythonCommand = '/Users/varunwahi/Development/Interview_Prep/frontend/whisper-env/bin/python3';
+      // const pythonCommand = '/Users/varunwahi/Development/Interview_Prep/frontend/whisper-env/bin/python3';
+      const pythonCommand = 'python';
       
       // Run Python script for transcription
       console.log(`[Main] Running transcription script: ${pythonCommand} ${transcriptionScript} ${audioFilePath}`);

@@ -10,6 +10,8 @@ const QuestionNavigatorPage = () => {
     return saved ? JSON.parse(saved) : {};
   });
   const [transcription, setTranscription] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const loadingTimeoutRef = useRef(null); 
 
   const currentIndexRef = useRef(currentIndex);
   const transcriptionsRef = useRef(transcriptions);
@@ -30,16 +32,48 @@ const QuestionNavigatorPage = () => {
     sessionStorage.setItem('transcriptions', JSON.stringify(transcriptions));
   }, [transcriptions]);
 
+  // Function to request data if it hasn't arrived after a timeout
+  const requestInterviewData = () => {
+    console.log("[QuestionNavigatorPage] Requesting interview data from main process");
+    window.api.send("request-interview-data");
+    
+    // Set a new timeout for the next retry if needed
+    loadingTimeoutRef.current = setTimeout(() => {
+      if (!interviewData) {
+        requestInterviewData();
+      }
+    }, 5000); // Retry every 5 seconds until data is received
+  };
+
   // Initialize and set up event listeners
   useEffect(() => {
+    setIsLoading(true);
+    
+    // Setup loading timeout to request data if not received
+    loadingTimeoutRef.current = setTimeout(() => {
+      if (!interviewData) {
+        requestInterviewData();
+      }
+    }, 3000); // Wait 3 seconds before first retry
+    
     // Load audio feedback sound
     audioRef.current = new Audio("sounds/mic_on.mp3");
 
     const handleInterviewData = (data) => {
       console.log("[QuestionNavigatorPage] Received interview data:", data);
+      
+      // Clear any loading timeout
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+      
       if (data && data.questions && Array.isArray(data.questions)) {
         setInterviewData(data);
         setCurrentIndex(0);
+        setIsLoading(false);
+        
+        // Cache the data in sessionStorage
+        sessionStorage.setItem("interviewData", JSON.stringify(data));
         
         // Set initial transcription if available
         const savedTranscriptions = transcriptionsRef.current;
@@ -70,7 +104,7 @@ const QuestionNavigatorPage = () => {
       }
       
       // Play audio feedback
-      playTranscribedAudio(result.text);
+      // playTranscribedAudio(result.text);
       
       // Reset recording state
       setRecordingState("idle");
@@ -80,6 +114,7 @@ const QuestionNavigatorPage = () => {
     const cachedData = sessionStorage.getItem("interviewData");
     if (cachedData) {
       try {
+        console.log("[QuestionNavigatorPage] Using cached interview data");
         const parsedData = JSON.parse(cachedData);
         handleInterviewData(parsedData);
       } catch (e) {
@@ -92,15 +127,12 @@ const QuestionNavigatorPage = () => {
       window.api.removeAllListeners("interview-data");
       window.api.removeAllListeners("transcription-complete");
       stopRecording();
+      
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
     };
   }, []);
-
-  // Save interview data to session storage when it changes
-  useEffect(() => {
-    if (interviewData) {
-      sessionStorage.setItem("interviewData", JSON.stringify(interviewData));
-    }
-  }, [interviewData]);
 
   // Helper function to send current question index to main process
   const sendQuestionIndex = (index) => {
@@ -252,95 +284,82 @@ const QuestionNavigatorPage = () => {
     }
   };
 
-  const totalQuestions = interviewData?.questions?.length || 0;
-  const isLastQuestion = currentIndex >= totalQuestions - 1;
-
-  return (
-    <div className="min-h-screen flex flex-col bg-gray-900 text-white">
-      <div className="p-4 md:p-6 border-b border-gray-700 flex flex-col md:flex-row items-center justify-between gap-4">
+  // Loading screen with retry button
+  if (isLoading || !interviewData) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white p-6">
+        <h1 className="text-xl font-semibold mb-6">Question Controller</h1>
+        <p className="text-gray-300 mb-8">Waiting for interview data...</p>
+        <button
+          onClick={requestInterviewData}
+          className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-medium"
+        >
+          Retry Loading Interview
+        </button>
         <button
           onClick={() => navigate("/")}
-          className="text-gray-300 hover:text-white bg-gray-800 px-4 py-2 rounded-lg font-medium flex items-center"
+          className="mt-4 text-gray-300 hover:text-white bg-gray-800 px-4 py-2 rounded-lg font-medium"
         >
           ← Back to Home
         </button>
-        <h1 className="text-lg md:text-xl font-semibold text-center">Question Controller</h1>
-        <div className="bg-gray-800 px-4 py-2 rounded-lg text-sm md:text-base text-center">
-          {interviewData ? `${interviewData.topic} - ${interviewData.difficulty}` : ""}
+      </div>
+    );
+  }
+
+ const totalQuestions = interviewData.questions.length;
+const currentQuestion = interviewData.questions[currentIndex];
+
+return (
+  <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6">
+    <h1 className="text-2xl font-bold mb-4">Interview Questions</h1>
+    
+    <div className="w-full max-w-3xl bg-gray-800 p-6 rounded-xl shadow-lg">
+      <p className="text-lg mb-4">
+  <span className="text-gray-400">Question {currentIndex + 1} of {totalQuestions}:</span><br />
+  <span className="text-white font-medium">{currentQuestion.question}</span>
+</p>
+
+      <div className="mb-4">
+        <label className="block text-gray-300 text-sm mb-1">Your Answer:</label>
+        <div className="w-full bg-gray-700 p-4 rounded-md min-h-[80px] text-white whitespace-pre-wrap">
+          {transcription || "No answer recorded yet."}
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <div className="mb-8 text-base md:text-lg bg-gray-800 px-6 py-3 rounded-full">
-          Question {totalQuestions > 0 ? currentIndex + 1 : 0} of {totalQuestions}
-        </div>
+      <div className="flex gap-4 mt-4 flex-wrap justify-between">
+        <button
+          onClick={handleSpeakQuestion}
+          className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-md font-medium"
+        >
+          🔊 Hear Question
+        </button>
+        
+        <button
+          onClick={handleToggleRecording}
+          className={`text-white px-4 py-2 rounded-md font-medium ${getRecordButtonClass()}`}
+        >
+          🎤 {getRecordButtonText()}
+        </button>
+      </div>
 
-        {transcription && (
-          <div className="mb-8 bg-gray-800 p-4 rounded-lg text-base max-w-3xl w-full">
-            <strong>Transcription:</strong> {transcription}
-          </div>
-        )}
+      <div className="flex justify-between mt-8">
+        <button
+          onClick={handlePrev}
+          disabled={currentIndex === 0}
+          className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 px-4 py-2 rounded-md"
+        >
+          ← Previous
+        </button>
 
-        <div className="w-full max-w-md mx-auto mb-12 space-y-6">
-          <button
-            onClick={handleSpeakQuestion}
-            className="w-full bg-gray-800 hover:bg-gray-700 text-white text-xl font-medium py-6 rounded-lg transition"
-            disabled={recordingState === "transcribing"}
-          >
-            Read Question
-          </button>
-
-          <button
-            onClick={handleToggleRecording}
-            disabled={recordingState === "transcribing"}
-            className={`w-full text-xl font-medium py-6 rounded-lg transition ${getRecordButtonClass()}`}
-          >
-            {getRecordButtonText()}
-          </button>
-        </div>
-
-        <div className="w-full flex justify-between gap-6 max-w-3xl">
-          <button
-            onClick={handlePrev}
-            disabled={currentIndex === 0 || totalQuestions === 0 || recordingState === "transcribing" || recordingState === "recording"}
-            className={`flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition border-3 ${
-              currentIndex === 0 || totalQuestions === 0 || recordingState === "transcribing" || recordingState === "recording"
-                ? "bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-500 text-white border-blue-400"
-            }`}
-          >
-            Previous
-          </button>
-
-          {isLastQuestion ? (
-            <button
-              onClick={() => navigate('/review-answers')}
-              disabled={recordingState === "transcribing" || recordingState === "recording"}
-              className={`flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition ${
-                recordingState === "transcribing" || recordingState === "recording"
-                  ? "bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed"
-                  : "bg-teal-600 hover:bg-teal-500 text-white border-teal-400"
-              }`}
-            >
-              Review
-            </button>
-          ) : (
-            <button
-              onClick={handleNext}
-              disabled={isLastQuestion || totalQuestions === 0 || recordingState === "transcribing" || recordingState === "recording"}
-              className={`flex-1 text-xl md:text-xl font-bold py-6 rounded-lg transition border-3 ${
-                isLastQuestion || totalQuestions === 0 || recordingState === "transcribing" || recordingState === "recording"
-                  ? "bg-gray-700 text-gray-500 border-gray-600 cursor-not-allowed"
-                  : "bg-teal-600 hover:bg-teal-500 text-white border-teal-400"
-              }`}
-            >
-              Next
-            </button>
-          )}
-        </div>
+        <button
+          onClick={handleNext}
+          className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-md"
+        >
+          {currentIndex === totalQuestions - 1 ? "Finish →" : "Next →"}
+        </button>
       </div>
     </div>
-  );
+  </div>
+);
 };
-
 export default QuestionNavigatorPage;
