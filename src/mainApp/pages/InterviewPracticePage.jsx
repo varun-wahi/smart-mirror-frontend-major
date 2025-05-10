@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+
 
 const InterviewPracticePage = () => {
   const [interviewData, setInterviewData] = useState(null);
@@ -7,43 +9,43 @@ const InterviewPracticePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const loadingTimeoutRef = useRef(null);
 
-  const speakQuestion = (text) => {
-    if (!text) return;
+  // const speakQuestion = (text) => {
+  //   if (!text) return;
   
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
+  //   window.speechSynthesis.cancel();
+  //   const utterance = new SpeechSynthesisUtterance(text);
   
-    // More natural settings
-    utterance.rate = 1.0;     // Normal speed
-    utterance.pitch = 1.1;    // Slightly expressive
-    utterance.volume = 1.0;   // Full volume
+  //   // More natural settings
+  //   utterance.rate = 1.0;     // Normal speed
+  //   utterance.pitch = 1.1;    // Slightly expressive
+  //   utterance.volume = 1.0;   // Full volume
   
-    const preferredVoices = [
-      "Google UK English Female",
-      "Google US English",
-      "Microsoft Aria Online (Natural)",
-      "Microsoft Jenny Online (Natural)"
-    ];
+  //   const preferredVoices = [
+  //     "Google UK English Female",
+  //     "Google US English",
+  //     "Microsoft Aria Online (Natural)",
+  //     "Microsoft Jenny Online (Natural)"
+  //   ];
   
-    const voices = window.speechSynthesis.getVoices();
+  //   const voices = window.speechSynthesis.getVoices();
   
-    if (voices.length > 0) {
-      const preferredVoice = voices.find((voice) =>
-        preferredVoices.includes(voice.name)
-      );
+  //   if (voices.length > 0) {
+  //     const preferredVoice = voices.find((voice) =>
+  //       preferredVoices.includes(voice.name)
+  //     );
   
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-      } else {
-        const englishVoice = voices.find((voice) => voice.lang.startsWith("en"));
-        if (englishVoice) {
-          utterance.voice = englishVoice;
-        }
-      }
-    }
+  //     if (preferredVoice) {
+  //       utterance.voice = preferredVoice;
+  //     } else {
+  //       const englishVoice = voices.find((voice) => voice.lang.startsWith("en"));
+  //       if (englishVoice) {
+  //         utterance.voice = englishVoice;
+  //       }
+  //     }
+  //   }
   
-    window.speechSynthesis.speak(utterance);
-  };
+  //   window.speechSynthesis.speak(utterance);
+  // };
 
   const ensureVoicesLoaded = () => {
     return new Promise((resolve) => {
@@ -124,7 +126,11 @@ const InterviewPracticePage = () => {
 
     window.api.on("show-interview-screen", handleShowInterviewScreen);
     window.api.on("question-index", handleQuestionIndex);
-    window.api.on("speak-question", handleSpeakCommand);
+    // window.api.on("question-index", handleQuestionIndex);
+    // navigate("/select-topic");
+    // window.api.on("question-index", handleQuestionIndex);
+
+    // window.api.on("speak-question", handleSpeakCommand);
 
     return () => {
       window.api.removeAllListeners("show-interview-screen");
@@ -142,7 +148,7 @@ const InterviewPracticePage = () => {
   useEffect(() => {
     if (interviewData?.questions && previousIndexRef.current === currentIndex) {
       const questionText = interviewData.questions[currentIndex].question;
-      speakQuestion(questionText);
+      // speakQuestion(questionText);
     }
   }, [interviewData, currentIndex]);
 

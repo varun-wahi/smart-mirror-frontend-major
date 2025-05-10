@@ -7,7 +7,7 @@ const apps = [
   { name: "Slideshow", action: "navigate", data: "/slideshow", icon: "icons/slideshow.png" },
   { name: "Teacher Data", action: "navigate", data: "/face-authentication", icon: "icons/teacher.png" },
   { name: "Interview Practice", action: "navigate", data: "/interview-practice", icon: "icons/interview.png" },
-  { name: "Teacher Registration", action: "navigate", data: "/register-face", icon: "icons/teacher.png" },
+  // { name: "Teacher Registration", action: "navigate", data: "/register-face", icon: "icons/teacher.png" },
 ];
 
 const TouchscreenAppGrid = () => {

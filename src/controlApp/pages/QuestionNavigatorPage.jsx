@@ -17,7 +17,6 @@ const QuestionNavigatorPage = () => {
   const transcriptionsRef = useRef(transcriptions);
 
   const navigate = useNavigate();
-  const audioRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
@@ -42,7 +41,29 @@ const QuestionNavigatorPage = () => {
       if (!interviewData) {
         requestInterviewData();
       }
-    }, 5000); // Retry every 5 seconds until data is received
+    }, 10000); // Retry every 5 seconds until data is received
+  };
+
+  // Function to speak text using the API
+  const speakText = async (text) => {
+    if (!text) return;
+    
+    try {
+      const response = await fetch('/speak', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      });
+      
+      const result = await response.json();
+      if (!result.success) {
+        console.error("[QuestionNavigatorPage] Speech API error:", result.error);
+      }
+    } catch (error) {
+      console.error("[QuestionNavigatorPage] Failed to call speech API:", error);
+    }
   };
 
   // Initialize and set up event listeners
@@ -55,9 +76,6 @@ const QuestionNavigatorPage = () => {
         requestInterviewData();
       }
     }, 3000); // Wait 3 seconds before first retry
-    
-    // Load audio feedback sound
-    audioRef.current = new Audio("sounds/mic_on.mp3");
 
     const handleInterviewData = (data) => {
       console.log("[QuestionNavigatorPage] Received interview data:", data);
@@ -81,6 +99,13 @@ const QuestionNavigatorPage = () => {
         
         // Send initial question index to main process
         setTimeout(() => sendQuestionIndex(0), 100);
+        
+        // Speak the first question
+        // setTimeout(() => {
+        //   if (data.questions[0]) {
+        //     speakText(data.questions[0].question);
+        //   }
+        // }, 500);
       } else {
         console.error("[QuestionNavigatorPage] Invalid interview data format:", data);
       }
@@ -101,10 +126,10 @@ const QuestionNavigatorPage = () => {
       // Update current transcription if user is still on the same question
       if (idx === currentIndexRef.current) {
         setTranscription(result.text);
+        
+        // Speak out the transcription result
+        speakText("Answer transcribed: " + result.text);
       }
-      
-      // Play audio feedback
-      // playTranscribedAudio(result.text);
       
       // Reset recording state
       setRecordingState("idle");
@@ -147,6 +172,11 @@ const QuestionNavigatorPage = () => {
       setCurrentIndex(newIndex);
       setTranscription(transcriptionsRef.current[newIndex] || "");
       sendQuestionIndex(newIndex);
+      
+      // Speak the question when navigating to previous question
+      if (interviewData && interviewData.questions[newIndex]) {
+        speakText(interviewData.questions[newIndex].question);
+      }
     }
   };
 
@@ -156,6 +186,11 @@ const QuestionNavigatorPage = () => {
       setCurrentIndex(newIndex);
       setTranscription(transcriptionsRef.current[newIndex] || "");
       sendQuestionIndex(newIndex);
+      
+      // Speak the question when navigating to next question
+      if (interviewData && interviewData.questions[newIndex]) {
+        speakText(interviewData.questions[newIndex].question);
+      }
     } else if (interviewData && currentIndex >= interviewData.questions.length - 1) {
       // When the last question is done, navigate to review answers page
       navigate('/review-answers');
@@ -164,7 +199,9 @@ const QuestionNavigatorPage = () => {
 
   // Trigger text-to-speech for current question
   const handleSpeakQuestion = () => {
-    window.api.send("speak-question");
+    if (interviewData && interviewData.questions[currentIndex]) {
+      speakText(interviewData.questions[currentIndex].question);
+    }
   };
 
   // Recording functionality
@@ -198,11 +235,8 @@ const QuestionNavigatorPage = () => {
       // Clear current transcription while recording
       setTranscription("");
 
-      // Play audio feedback
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch((err) => console.error("Mic sound error:", err));
-      }
+      // Speak a message when recording starts
+      speakText("Recording started");
 
       console.log("[QuestionNavigatorPage] Recording started");
     } catch (error) {
@@ -214,6 +248,7 @@ const QuestionNavigatorPage = () => {
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop();
+      speakText("Recording stopped");
       console.log("[QuestionNavigatorPage] Recording stopped");
     }
   };
@@ -241,15 +276,6 @@ const QuestionNavigatorPage = () => {
       console.error("[QuestionNavigatorPage] Error saving recording:", error);
       setRecordingState("idle");
     }
-  };
-
-  // Play audio feedback after transcription
-  const playTranscribedAudio = (text) => {
-    console.log("[QuestionNavigatorPage] Transcribed text:", text);
-
-    // Speak confirmation using speech synthesis
-    const utterance = new SpeechSynthesisUtterance("Answer transcribed");
-    speechSynthesis.speak(utterance);
   };
 
   // Toggle recording state
@@ -306,60 +332,81 @@ const QuestionNavigatorPage = () => {
     );
   }
 
- const totalQuestions = interviewData.questions.length;
-const currentQuestion = interviewData.questions[currentIndex];
+  const totalQuestions = interviewData.questions.length;
+  const currentQuestion = interviewData.questions[currentIndex];
 
-return (
-  <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6">
-    <h1 className="text-2xl font-bold mb-4">Interview Questions</h1>
+  return (
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6 relative">
+  {/* Back to Home Button */}
+<button 
+  onClick={() => {
+    // Send IPC to display app
+    if (window.api) {
+      window.api.send("navigate", { path: "/" });
+      console.log("Sent to display:", "/");
+    } else {
+      console.error("IPC not available");
+    }
     
-    <div className="w-full max-w-3xl bg-gray-800 p-6 rounded-xl shadow-lg">
-      <p className="text-lg mb-4">
-  <span className="text-gray-400">Question {currentIndex + 1} of {totalQuestions}:</span><br />
-  <span className="text-white font-medium">{currentQuestion.question}</span>
-</p>
+    // Also navigate in React
+    navigate('/');
+  }}
+  className="absolute top-6 left-6 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-md flex items-center"
+>
+  <span className="mr-1">←</span> Back to Home
+</button>
 
-      <div className="mb-4">
-        <label className="block text-gray-300 text-sm mb-1">Your Answer:</label>
-        <div className="w-full bg-gray-700 p-4 rounded-md min-h-[80px] text-white whitespace-pre-wrap">
-          {transcription || "No answer recorded yet."}
+      
+      <h1 className="text-2xl font-bold mb-4">Interview Questions</h1>
+      
+      <div className="w-full max-w-3xl bg-gray-800 p-6 rounded-xl shadow-lg">
+        <p className="text-lg mb-4">
+          <span className="text-gray-400">Question {currentIndex + 1} of {totalQuestions}:</span><br />
+          <span className="text-white font-medium">{currentQuestion.question}</span>
+        </p>
+
+        <div className="mb-4">
+          <label className="block text-gray-300 text-sm mb-1">Your Answer:</label>
+          <div className="w-full bg-gray-700 p-4 rounded-md min-h-[80px] text-white whitespace-pre-wrap">
+            {transcription || "No answer recorded yet."}
+          </div>
+        </div>
+
+        <div className="flex gap-4 mt-4 flex-wrap justify-between">
+          <button
+            onClick={handleSpeakQuestion}
+            className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-md font-medium"
+          >
+            🔊 Hear Question
+          </button>
+          
+          <button
+            onClick={handleToggleRecording}
+            className={`text-white px-4 py-2 rounded-md font-medium ${getRecordButtonClass()}`}
+          >
+            🎤 {getRecordButtonText()}
+          </button>
+        </div>
+
+        <div className="flex justify-between mt-8">
+          <button
+            onClick={handlePrev}
+            disabled={currentIndex === 0}
+            className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 px-4 py-2 rounded-md"
+          >
+            ← Previous
+          </button>
+
+          <button
+            onClick={handleNext}
+            className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-md"
+          >
+            {currentIndex === totalQuestions - 1 ? "Finish →" : "Next →"}
+          </button>
         </div>
       </div>
-
-      <div className="flex gap-4 mt-4 flex-wrap justify-between">
-        <button
-          onClick={handleSpeakQuestion}
-          className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-md font-medium"
-        >
-          🔊 Hear Question
-        </button>
-        
-        <button
-          onClick={handleToggleRecording}
-          className={`text-white px-4 py-2 rounded-md font-medium ${getRecordButtonClass()}`}
-        >
-          🎤 {getRecordButtonText()}
-        </button>
-      </div>
-
-      <div className="flex justify-between mt-8">
-        <button
-          onClick={handlePrev}
-          disabled={currentIndex === 0}
-          className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 px-4 py-2 rounded-md"
-        >
-          ← Previous
-        </button>
-
-        <button
-          onClick={handleNext}
-          className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-md"
-        >
-          {currentIndex === totalQuestions - 1 ? "Finish →" : "Next →"}
-        </button>
-      </div>
     </div>
-  </div>
-);
+  );
 };
+
 export default QuestionNavigatorPage;

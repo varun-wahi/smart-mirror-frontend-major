@@ -13,6 +13,7 @@ const FaceAuthenticationPage = () => {
 
   // Backend API URL
   const API_URL = process.env.PYTHON_LOCAL_BACKEND_URL || "http://localhost:5030";
+  
   useEffect(() => {
     // Start the camera on backend
     const startCamera = async () => {
@@ -23,7 +24,7 @@ const FaceAuthenticationPage = () => {
         // Delay showing the video feed
         setTimeout(() => {
           setShowVideo(true);
-        }, 5000); // 10 seconds
+        }, 5000); // 5 seconds
       } catch (error) {
         console.error("Failed to start camera:", error);
       }
@@ -31,24 +32,18 @@ const FaceAuthenticationPage = () => {
   
     startCamera();
   }, []);
-  
-// useEffect(() => {
-//   // Delay showing the video feed
-//   const timeout = setTimeout(() => {
-//     setShowVideo(true);
-//   }, 5000); // 2 second delay
-
-//   return () => clearTimeout(timeout);
-// }, []);
 
   useEffect(() => {
-    // Function to speak greeting
-    const speakGreeting = (name) => {
-      if ('speechSynthesis' in window) {
-        const greeting = new SpeechSynthesisUtterance(`Welcome, ${name}! Your attendance has been logged.`);
-        greeting.rate = 1; // Slightly slower
-        greeting.pitch = 1;
-        window.speechSynthesis.speak(greeting);
+    // Function to make the backend speak
+    const speakGreeting = async (name) => {
+      try {
+        // Call the backend speak API
+        await axios.post(`${API_URL}/speak`, {
+          text: `Welcome, ${name}! Your attendance has been logged.`
+        });
+        console.log("Speech request sent to backend");
+      } catch (error) {
+        console.error("Error sending speech request:", error);
       }
     };
 
@@ -69,10 +64,10 @@ const FaceAuthenticationPage = () => {
           // Show success animation
           setShowSuccess(true);
 
-          // Speak greeting
-          // speakGreeting(response.data.name);
+          // Use backend to speak greeting
+          speakGreeting(response.data.name);
 
-          // You could navigate to another page after delay
+          // Navigate to another page after delay
           setTimeout(() => {
             navigate("/");
           }, 3000);
@@ -108,7 +103,6 @@ const FaceAuthenticationPage = () => {
             <p className="text-white text-lg">Loading camera...</p>
           </div>
         )}
-
 
         {/* Success animation overlay */}
         {showSuccess && (
