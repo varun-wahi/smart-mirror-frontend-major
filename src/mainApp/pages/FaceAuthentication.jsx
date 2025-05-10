@@ -7,10 +7,21 @@ const FaceAuthenticationPage = () => {
   const [recognizedPerson, setRecognizedPerson] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const navigate = useNavigate();
+  const [showVideo, setShowVideo] = useState(false);
+
   const videoRef = useRef(null);
-  
+
   // Backend API URL
   const API_URL = process.env.PYTHON_LOCAL_BACKEND_URL || "http://localhost:5030";
+
+useEffect(() => {
+  // Delay showing the video feed
+  const timeout = setTimeout(() => {
+    setShowVideo(true);
+  }, 2000); // 2 second delay
+
+  return () => clearTimeout(timeout);
+}, []);
 
   useEffect(() => {
     // Function to speak greeting
@@ -27,22 +38,22 @@ const FaceAuthenticationPage = () => {
     const checkForRecognition = async () => {
       try {
         const response = await axios.get(`${API_URL}/check_recognition`);
-        
-        if (response.data.recognized && 
-            (!recognizedPerson || recognizedPerson !== response.data.name)) {
-          
+
+        if (response.data.recognized &&
+          (!recognizedPerson || recognizedPerson !== response.data.name)) {
+
           // Update recognized person
           setRecognizedPerson(response.data.name);
-          
+
           // Display name
           setMessage(`Welcome, ${response.data.name}!`);
-          
+
           // Show success animation
           setShowSuccess(true);
-          
+
           // Speak greeting
           speakGreeting(response.data.name);
-          
+
           // You could navigate to another page after delay
           // setTimeout(() => {
           //   navigate("/teacher-data", { 
@@ -57,7 +68,7 @@ const FaceAuthenticationPage = () => {
 
     // Set up polling interval
     const pollingInterval = setInterval(checkForRecognition, 1000); // Check every second
-    
+
     // Clean up on unmount
     return () => {
       clearInterval(pollingInterval);
@@ -67,32 +78,39 @@ const FaceAuthenticationPage = () => {
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-black text-white p-4">
       <h1 className="text-3xl font-bold mb-6">Face Authentication</h1>
-      
+
       <div className="relative w-full max-w-2xl aspect-video mb-6">
         {/* Video Stream from Python Backend */}
-        <img 
-          src={`${API_URL}/video_feed`} 
-          className="w-full h-full object-cover rounded-lg"
-          alt="Face recognition video feed"
-        />
-        
+        {showVideo ? (
+          <img
+            src={`${API_URL}/video_feed`}
+            className="w-full h-full object-cover rounded-lg"
+            alt="Face recognition video feed"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-800 rounded-lg">
+            <p className="text-white text-lg">Loading camera...</p>
+          </div>
+        )}
+
+
         {/* Success animation overlay */}
         {showSuccess && (
           <div className="absolute inset-0 bg-green-500 bg-opacity-30 flex items-center justify-center rounded-lg">
             <div className="text-center">
               <div className="inline-block p-4 rounded-full bg-green-500">
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-16 w-16 text-white" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-16 w-16 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M5 13l4 4L19 7" 
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
                   />
                 </svg>
               </div>
@@ -106,7 +124,7 @@ const FaceAuthenticationPage = () => {
           </div>
         )}
       </div>
-      
+
       <div className="text-center">
         <p className="text-xl mb-2">{message}</p>
         {!recognizedPerson && !showSuccess && (
