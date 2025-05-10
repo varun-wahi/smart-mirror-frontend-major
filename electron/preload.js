@@ -39,3 +39,9 @@ contextBridge.exposeInMainWorld('api', {
     }
   },
 });
+
+// Signal that renderer is ready
+window.addEventListener('DOMContentLoaded', () => {
+  console.log('[Renderer] DOM content loaded, sending ready signal');
+  ipcRenderer.send('renderer-ready');
+});

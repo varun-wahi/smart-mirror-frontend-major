@@ -61,7 +61,7 @@ function createControlWindow() {
   });
 
   controlWindow.loadFile(path.join(__dirname, '../dist/control.html'));
-  // controlWindow.webContents.openDevTools({ mode: 'detach' });
+  controlWindow.webContents.openDevTools({ mode: 'detach' }); // Enable developer tools
 
   controlWindow.on('closed', () => {
     controlWindow = null;
