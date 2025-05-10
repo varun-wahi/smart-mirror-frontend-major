@@ -6,6 +6,7 @@ const FaceAuthenticationPage = () => {
   const [message, setMessage] = useState("Initializing face recognition...");
   const [recognizedPerson, setRecognizedPerson] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [lastFaceDetectedTime, setLastFaceDetectedTime] = useState(Date.now());
   const navigate = useNavigate();
   const videoRef = useRef(null);
   
@@ -43,12 +44,25 @@ const FaceAuthenticationPage = () => {
           // Speak greeting
           speakGreeting(response.data.name);
           
-          // You could navigate to another page after delay
-          // setTimeout(() => {
-          //   navigate("/teacher-data", { 
-          //     state: { teacherData: { name: response.data.name } } 
-          //   });
-          // }, 3000);
+
+          // Navigate to home page after 3 seconds
+          setTimeout(() => {
+            navigate("/");
+          }, 3000);
+        }
+        
+        // Update last face detection time when a face is present
+        if (response.data.face_detected) {
+          setLastFaceDetectedTime(Date.now());
+        } else {
+          // Check if 5 seconds passed with no face detected
+          const timeSinceLastFace = Date.now() - lastFaceDetectedTime;
+          if (timeSinceLastFace > 5000 && !recognizedPerson) {
+            setMessage("No face detected. Returning to home...");
+            setTimeout(() => {
+              navigate("/");
+            }, 1000); // Brief delay to show the message
+          }
         }
       } catch (error) {
         console.error("Error checking recognition:", error);
@@ -62,7 +76,11 @@ const FaceAuthenticationPage = () => {
     return () => {
       clearInterval(pollingInterval);
     };
+// <<<<<<< test-frontend
   }, [API_URL, navigate, recognizedPerson]);
+// =======
+//   }, [API_URL, navigate, recognizedPerson, lastFaceDetectedTime]);
+// >>>>>>> main
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-black text-white p-4">
