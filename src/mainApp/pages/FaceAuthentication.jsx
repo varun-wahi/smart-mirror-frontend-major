@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import dotenv from "dotenv";
 
 const FaceAuthenticationPage = () => {
   const [message, setMessage] = useState("Initializing face recognition...");
@@ -12,7 +13,9 @@ const FaceAuthenticationPage = () => {
   const videoRef = useRef(null);
 
   // Backend API URL
-  const API_URL = process.env.PYTHON_LOCAL_BACKEND_URL || "http://localhost:5030";
+  dotenv.config();
+
+  const API_URL = process.env.REACT_APP_PYTHON_LOCAL_BACKEND_URL || "http://localhost:5030";
   
   useEffect(() => {
     // Start the camera on backend

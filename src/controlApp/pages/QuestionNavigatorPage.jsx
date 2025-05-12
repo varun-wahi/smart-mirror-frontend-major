@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import dotenv from "dotenv";
 
 const QuestionNavigatorPage = () => {
   const [interviewData, setInterviewData] = useState(null);
@@ -20,6 +21,10 @@ const QuestionNavigatorPage = () => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
+    dotenv.config();
+
+    const API_URL = process.env.REACT_APP_PYTHON_LOCAL_BACKEND_URL || "http://localhost:5030";
+
   // Memoized request interview data function
   const requestInterviewData = useCallback(() => {
     console.log("[QuestionNavigatorPage] Requesting interview data from main process");
@@ -38,7 +43,7 @@ const QuestionNavigatorPage = () => {
     if (!text) return;
     
     try {
-      const response = await fetch('/speak', {
+      const response = await fetch(`${API_URL}/speak`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
