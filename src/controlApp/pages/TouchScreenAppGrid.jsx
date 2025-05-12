@@ -34,10 +34,10 @@ const TouchscreenAppGrid = () => {
       let response;
 
       if (isMotionActive) {
-        response = await axios.post("http://localhost:5020/api/light/stop");
+        response = await axios.post("http://localhost:5030/api/light/on");
         console.log("Lights off.");
       } else {
-        response = await axios.post("http://localhost:5020/api/light/start");
+        response = await axios.post("http://localhost:5030/api/light/off");
         console.log("Lights on.");
       }
 

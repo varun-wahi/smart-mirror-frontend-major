@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import InterviewPerformancePage from '../../mainApp/pages/InterviewPerformancePage'; // Import the visualization component
 
 const ReviewAnswersPage = () => {
   const [interviewData, setInterviewData] = useState(null);
@@ -11,29 +10,48 @@ const ReviewAnswersPage = () => {
   const [currentAnalysisIndex, setCurrentAnalysisIndex] = useState(null);
   const [overallScore, setOverallScore] = useState(null);
   const [analysisError, setAnalysisError] = useState(null);
+  
+  // States for Telegram integration
+  const [showTelegramDialog, setShowTelegramDialog] = useState(false);
+  const [telegramGroupId, setTelegramGroupId] = useState('-4786736575');
+  const [isSendingToTelegram, setIsSendingToTelegram] = useState(false);
+  const [telegramSendResult, setTelegramSendResult] = useState(null);
+  
   const navigate = useNavigate();
 
   useEffect(() => {
-  // Load interview data and transcriptions from session storage
-  const storedData = sessionStorage.getItem('interviewData');
-  if (storedData) {
-    const parsedData = JSON.parse(storedData);
-    setInterviewData(parsedData);
+    // Load interview data and transcriptions from session storage
+    const storedData = sessionStorage.getItem('interviewData');
+    if (storedData) {
+      const parsedData = JSON.parse(storedData);
+      setInterviewData(parsedData);
+      
+      // Debug logging
+      console.log('Stored Interview Data:', parsedData);
+    }
+
+    const storedTranscriptions = JSON.parse(sessionStorage.getItem('transcriptions') || '{}');
+    console.log('Stored Transcriptions:', storedTranscriptions);
+    setTranscriptions(storedTranscriptions);
+
+    // Log number of questions and transcriptions
+    if (JSON.parse(storedData)?.questions) {
+      console.log('Number of Questions:', JSON.parse(storedData).questions.length);
+      console.log('Number of Transcriptions:', Object.keys(storedTranscriptions).length);
+    }
     
-    // Debug logging
-    console.log('Stored Interview Data:', parsedData);
-  }
+    // Load stored analysis results if available
+    const storedAnalysisResults = JSON.parse(sessionStorage.getItem('analysisResults') || '{}');
+    if (Object.keys(storedAnalysisResults).length > 0) {
+      setAnalysisResults(storedAnalysisResults);
+    }
+    
+    const storedOverallAnalysis = JSON.parse(sessionStorage.getItem('overallAnalysis') || 'null');
+    if (storedOverallAnalysis) {
+      setOverallAnalysis(storedOverallAnalysis);
+    }
+  }, []);
 
-  const storedTranscriptions = JSON.parse(sessionStorage.getItem('transcriptions') || '{}');
-  console.log('Stored Transcriptions:', storedTranscriptions);
-  setTranscriptions(storedTranscriptions);
-
-  // Log number of questions and transcriptions
-  if (JSON.parse(storedData)?.questions) {
-    console.log('Number of Questions:', JSON.parse(storedData).questions.length);
-    console.log('Number of Transcriptions:', Object.keys(storedTranscriptions).length);
-  }
-}, []);
   // Calculate overall score whenever analysis results change
   useEffect(() => {
     if (Object.keys(analysisResults).length > 0) {
@@ -47,66 +65,66 @@ const ReviewAnswersPage = () => {
     navigate("/");
   };
 
-const analyzeAllAnswers = async () => {
-  console.log('Current Interview Data:', interviewData);
-  console.log('Current Transcriptions:', transcriptions);
+  const analyzeAllAnswers = async () => {
+    console.log('Current Interview Data:', interviewData);
+    console.log('Current Transcriptions:', transcriptions);
 
-  if (!interviewData?.questions?.length) {
-    console.error('No interview questions available');
-    return;
-  }
+    if (!interviewData?.questions?.length) {
+      console.error('No interview questions available');
+      return;
+    }
 
-  setIsAnalyzing(true);
-  setAnalysisError(null);
-  const results = { ...analysisResults };
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+    const results = { ...analysisResults };
 
-  try {
-    for (let i = 0; i < interviewData.questions.length; i++) {
-      console.log(`Checking transcription for question ${i}:`, transcriptions[i]);
+    try {
+      for (let i = 0; i < interviewData.questions.length; i++) {
+        console.log(`Checking transcription for question ${i}:`, transcriptions[i]);
 
-      if (transcriptions[i]) {
-        console.log(`Attempting to analyze question ${i}:`, {
-          question: interviewData.questions[i].question,
-          transcription: transcriptions[i]
-        });
+        if (transcriptions[i]) {
+          console.log(`Attempting to analyze question ${i}:`, {
+            question: interviewData.questions[i].question,
+            transcription: transcriptions[i]
+          });
 
-        setCurrentAnalysisIndex(i);
-        try {
-          const result = await analyzeAnswer(interviewData.questions[i].question, transcriptions[i], i);
-          console.log(`Analysis result for question ${i}:`, result);
-          results[i] = result;
-        } catch (error) {
-          console.error(`Error analyzing answer ${i}:`, error);
+          setCurrentAnalysisIndex(i);
+          try {
+            const result = await analyzeAnswer(interviewData.questions[i].question, transcriptions[i], i);
+            console.log(`Analysis result for question ${i}:`, result);
+            results[i] = result;
+          } catch (error) {
+            console.error(`Error analyzing answer ${i}:`, error);
+          }
+        } else {
+          console.warn(`No transcription for question ${i}`);
         }
-      } else {
-        console.warn(`No transcription for question ${i}`);
       }
+
+      // Log the final results before setting state
+      console.log('Final analysis results:', results);
+
+      // Only set results if something was analyzed
+      if (Object.keys(results).length > 0) {
+        setAnalysisResults(results);
+        sessionStorage.setItem('analysisResults', JSON.stringify(results));
+
+        // After analyzing all individual answers, get the overall analysis
+        await analyzeFullInterview();
+        // After full analysis is done, navigate to analysis screens
+        handleShowAnalysis();
+      } else {
+        console.error('No answers were analyzed');
+        setAnalysisError('No transcriptions found to analyze');
+      }
+    } catch (error) {
+      console.error('Error during analysis:', error);
+      setAnalysisError('An error occurred during analysis. Please try again.');
+    } finally {
+      setCurrentAnalysisIndex(null);
+      setIsAnalyzing(false);
     }
-
-    // Log the final results before setting state
-    console.log('Final analysis results:', results);
-
-    // Only set results if something was analyzed
-    if (Object.keys(results).length > 0) {
-      setAnalysisResults(results);
-      sessionStorage.setItem('analysisResults', JSON.stringify(results));
-
-      // After analyzing all individual answers, get the overall analysis
-      await analyzeFullInterview();
-      // After full analysis is done, navigate to analysis screens
-      handleShowAnalysis();
-    } else {
-      console.error('No answers were analyzed');
-      setAnalysisError('No transcriptions found to analyze');
-    }
-  } catch (error) {
-    console.error('Error during analysis:', error);
-    setAnalysisError('An error occurred during analysis. Please try again.');
-  } finally {
-    setCurrentAnalysisIndex(null);
-    setIsAnalyzing(false);
-  }
-};
+  };
 
   const analyzeAnswer = async (question, answer, index) => {
     try {
@@ -169,68 +187,68 @@ const analyzeAllAnswers = async () => {
     }
   };
 
-const handleShowAnalysis = () => {
-  // Retrieve stored analysis data if current state is empty
-  const storedAnalysisResults = JSON.parse(sessionStorage.getItem('analysisResults') || '{}');
-  const storedOverallAnalysis = JSON.parse(sessionStorage.getItem('overallAnalysis') || 'null');
-  const storedOverallScore = sessionStorage.getItem('overallScore');
+  const handleShowAnalysis = () => {
+    // Retrieve stored analysis data if current state is empty
+    const storedAnalysisResults = JSON.parse(sessionStorage.getItem('analysisResults') || '{}');
+    const storedOverallAnalysis = JSON.parse(sessionStorage.getItem('overallAnalysis') || 'null');
+    const storedOverallScore = sessionStorage.getItem('overallScore');
 
-  // Calculate overall score if not already set
-  const calculatedOverallScore = overallScore !== null 
-    ? overallScore 
-    : storedOverallScore 
-      ? parseFloat(storedOverallScore) 
-      : storedOverallAnalysis?.overallScore 
-        ? storedOverallAnalysis.overallScore 
-        : calculateOverallScore(storedAnalysisResults);
+    // Calculate overall score if not already set
+    const calculatedOverallScore = overallScore !== null 
+      ? overallScore 
+      : storedOverallScore 
+        ? parseFloat(storedOverallScore) 
+        : storedOverallAnalysis?.overallScore 
+          ? storedOverallAnalysis.overallScore 
+          : calculateOverallScore(storedAnalysisResults);
 
-  const analysisData = {
-    analysisResults: Object.keys(analysisResults).length > 0 ? analysisResults : storedAnalysisResults,
-    overallAnalysis: overallAnalysis || storedOverallAnalysis,
-    overallScore: calculatedOverallScore,
-    topic: interviewData?.topic || 'Unknown Topic',
-    difficulty: interviewData?.difficulty || 'Unknown Difficulty'
+    const analysisData = {
+      analysisResults: Object.keys(analysisResults).length > 0 ? analysisResults : storedAnalysisResults,
+      overallAnalysis: overallAnalysis || storedOverallAnalysis,
+      overallScore: calculatedOverallScore,
+      topic: interviewData?.topic || 'Unknown Topic',
+      difficulty: interviewData?.difficulty || 'Unknown Difficulty'
+    };
+
+    console.log('Full analysis data being sent:', {
+      analysisResultsCount: Object.keys(analysisData.analysisResults).length,
+      overallAnalysis: analysisData.overallAnalysis,
+      overallScore: analysisData.overallScore,
+      topic: analysisData.topic,
+      difficulty: analysisData.difficulty
+    });
+
+    // Check if we have meaningful analysis data
+    if (Object.keys(analysisData.analysisResults).length === 0 && !analysisData.overallAnalysis) {
+      console.error('Cannot send empty analysis results');
+      // Optional: Show a user-friendly error message
+      alert('No analysis data available. Please analyze your answers first.');
+      return;
+    }
+
+    // Ensure overallScore is a number
+    if (analysisData.overallScore === null || isNaN(analysisData.overallScore)) {
+      analysisData.overallScore = 0;
+    }
+
+    // Use 'send-analysis-data' instead of 'show-analysis'
+    window.api.send('send-analysis-data', analysisData);
+    // navigate('/interview-analysis-controller');
   };
 
-  console.log('Full analysis data being sent:', {
-    analysisResultsCount: Object.keys(analysisData.analysisResults).length,
-    overallAnalysis: analysisData.overallAnalysis,
-    overallScore: analysisData.overallScore,
-    topic: analysisData.topic,
-    difficulty: analysisData.difficulty
-  });
+  // Helper function to calculate overall score if not already set
+  const calculateOverallScore = (analysisResults) => {
+    if (Object.keys(analysisResults).length === 0) return 0;
 
-  // Check if we have meaningful analysis data
-  if (Object.keys(analysisData.analysisResults).length === 0 && !analysisData.overallAnalysis) {
-    console.error('Cannot send empty analysis results');
-    // Optional: Show a user-friendly error message
-    alert('No analysis data available. Please analyze your answers first.');
-    return;
-  }
+    const scores = Object.values(analysisResults)
+      .map(result => result.overallScore || 0)
+      .filter(score => !isNaN(score));
 
-  // Ensure overallScore is a number
-  if (analysisData.overallScore === null || isNaN(analysisData.overallScore)) {
-    analysisData.overallScore = 0;
-  }
+    if (scores.length === 0) return 0;
 
-  // Use 'send-analysis-data' instead of 'show-analysis'
-  window.api.send('send-analysis-data', analysisData);
-  navigate('/interview-analysis-controller');
-};
-
-// Helper function to calculate overall score if not already set
-const calculateOverallScore = (analysisResults) => {
-  if (Object.keys(analysisResults).length === 0) return 0;
-
-  const scores = Object.values(analysisResults)
-    .map(result => result.overallScore || 0)
-    .filter(score => !isNaN(score));
-
-  if (scores.length === 0) return 0;
-
-  const avgScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-  return Math.round(avgScore * 10) / 10; // Round to 1 decimal place
-};
+    const avgScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+    return Math.round(avgScore * 10) / 10; // Round to 1 decimal place
+  };
 
   const handleAnalyzeSingleAnswer = async (question, answer, index) => {
     setCurrentAnalysisIndex(index);
@@ -251,34 +269,92 @@ const calculateOverallScore = (analysisResults) => {
     setIsAnalyzing(false);
   };
 
+  // Updated downloadResults function to handle local download and Telegram sending
   const downloadResults = () => {
-    // Create a full report with all data
+    // Create a full report with all data - proper format for PDF generation
     const report = {
       interviewTopic: interviewData?.topic || 'Unknown Topic',
       difficulty: interviewData?.difficulty || 'Unknown Difficulty',
-      overallScore,
-      overallAnalysis,
-      questions: interviewData?.questions?.map((qObj, index) => ({
-        questionNumber: index + 1,
-        question: qObj.question,
-        modelAnswer: qObj.answer,
-        yourAnswer: transcriptions[index] || "No answer provided",
-        analysis: analysisResults[index] || null
-      }))
+      overallScore: overallScore || 0,
+      strengthAreas: overallAnalysis?.strengthAreas || [],
+      improvementAreas: overallAnalysis?.improvementAreas || [],
+      keyInsights: overallAnalysis?.keyInsights || '',
+      developmentPlan: overallAnalysis?.developmentPlan || '',
+      questions: interviewData?.questions || [],
+      answers: Object.values(transcriptions),
+      questionAnalysis: analysisResults
     };
 
-    // Convert to JSON string
-    const jsonString = JSON.stringify(report, null, 2);
+    // Perform local download
+    // const jsonString = JSON.stringify(report, null, 2);
+    // const blob = new Blob([jsonString], { type: 'application/json' });
+    // const url = URL.createObjectURL(blob);
+    // const link = document.createElement('a');
+    // link.href = url;
+    // link.download = `interview-results-${new Date().toISOString().slice(0, 10)}.json`;
+    // document.body.appendChild(link);
+    // link.click();
+    // document.body.removeChild(link);
+    // URL.revokeObjectURL(url);
+    
+    // Show Telegram dialog
+    // setShowTelegramDialog(true);
+    handleSendToTelegram();
+  };
+  
+  // Handle sending report to Telegram
+  const handleSendToTelegram = async () => {
+    if (!telegramGroupId.trim()) {
+      alert('Please enter a valid Telegram Group ID');
+      return;
+    }
 
-    // Create download link
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `interview-results-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    setIsSendingToTelegram(true);
+    setTelegramSendResult(null);
+    
+    try {
+      const report = {
+        interviewTopic: interviewData?.topic || 'Unknown Topic',
+        difficulty: interviewData?.difficulty || 'Unknown Difficulty',
+        overallScore: overallScore || 0,
+        strengthAreas: overallAnalysis?.strengthAreas || [],
+        improvementAreas: overallAnalysis?.improvementAreas || [],
+        keyInsights: overallAnalysis?.keyInsights || '',
+        developmentPlan: overallAnalysis?.developmentPlan || '',
+        questions: interviewData?.questions || [],
+        answers: Object.values(transcriptions),
+        questionAnalysis: analysisResults
+      };
+      
+      const response = await fetch('http://localhost:5020/api/interview/send-telegram-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          report,
+          telegramGroupId
+        }),
+      });
+
+      const data = await response.json();
+      setTelegramSendResult(data);
+      
+      if (data.success) {
+        setTimeout(() => {
+          setShowTelegramDialog(false);
+          setTelegramSendResult(null);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error sending to Telegram:', error);
+      setTelegramSendResult({ 
+        success: false, 
+        error: error.message 
+      });
+    } finally {
+      setIsSendingToTelegram(false);
+    }
   };
 
   // Helper to render score bars with appropriate colors
@@ -373,49 +449,6 @@ const calculateOverallScore = (analysisResults) => {
             <div className="text-gray-300 mb-4">
               {Object.keys(analysisResults).length} of {interviewData?.questions?.length || 0} answers analyzed
             </div>
-
-            {/* Add the performance visualization component */}
-            {Object.keys(analysisResults).length > 0 && (
-              <InterviewPerformancePage
-                analysisResults={analysisResults}
-                overallAnalysis={overallAnalysis}
-                overallScore={overallScore}
-              />
-            )}
-          </div>
-        )}
-
-        {overallAnalysis && (
-          <div className="mb-8 bg-gray-800 p-6 rounded-lg">
-            <h2 className="text-xl font-bold mb-4">Interview Assessment</h2>
-
-            <div className="mb-4">
-              <h3 className="text-lg font-medium mb-2">Key Insights</h3>
-              <p className="text-gray-300">{overallAnalysis.keyInsights}</p>
-            </div>
-
-            <div className="mb-4">
-              <h3 className="text-lg font-medium mb-2">Strengths</h3>
-              <ul className="list-disc pl-5 text-gray-300">
-                {overallAnalysis.strengthAreas.map((strength, idx) => (
-                  <li key={idx}>{strength}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="mb-4">
-              <h3 className="text-lg font-medium mb-2">Areas for Improvement</h3>
-              <ul className="list-disc pl-5 text-gray-300">
-                {overallAnalysis.improvementAreas.map((area, idx) => (
-                  <li key={idx}>{area}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-medium mb-2">Development Plan</h3>
-              <p className="text-gray-300">{overallAnalysis.developmentPlan}</p>
-            </div>
           </div>
         )}
 
@@ -492,6 +525,59 @@ const calculateOverallScore = (analysisResults) => {
           </div>
         ))}
       </div>
+      
+      {/* Telegram Dialog */}
+      {showTelegramDialog && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-xl font-bold mb-4">Send to Telegram</h3>
+            <p className="mb-4 text-gray-300">
+              Enter your Telegram Group ID to send this report as a PDF:
+            </p>
+            <input
+              type="text"
+              value={telegramGroupId}
+              onChange={(e) => setTelegramGroupId(e.target.value)}
+              placeholder="Telegram Group ID"
+              className="w-full p-2 mb-4 bg-gray-700 border border-gray-600 rounded text-white"
+            />
+            
+            {telegramSendResult && (
+              <div 
+                className={`p-3 mb-4 rounded ${
+                  telegramSendResult.success 
+                    ? 'bg-green-900/30 border border-green-700 text-green-200' 
+                    : 'bg-red-900/30 border border-red-700 text-red-200'
+                }`}
+              >
+                {telegramSendResult.success 
+                  ? 'Report sent successfully!' 
+                  : `Error: ${telegramSendResult.error || 'Failed to send report'}`}
+              </div>
+            )}
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowTelegramDialog(false)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleSendToTelegram}
+                disabled={isSendingToTelegram}
+                className={`px-4 py-2 rounded ${
+                  isSendingToTelegram 
+                    ? 'bg-blue-800 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-500'
+                }`}
+              >
+                {isSendingToTelegram ? 'Sending...' : 'Send to Telegram'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

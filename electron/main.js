@@ -149,10 +149,6 @@ function setupIPCChannels() {
     sendToMainWindow('navigate', page);
   });
 
-  ipcMain.on('send-analysis-data', (event, analysisData) => {
-  // Handle the analysis data
-  mainWindow.webContents.send('analysis-data', analysisData);
-});
 
   // Handle interview screen setup
   ipcMain.on('show-interview-screen', (event, data) => {
@@ -172,6 +168,48 @@ function setupIPCChannels() {
       }
     }, 500); // Increased delay for slower devices
   });
+
+  let cachedAnalysisData = null;
+
+// Listen for a component ready signal
+ipcMain.on('analysis-component-ready', () => {
+  console.log("[Main] Analysis component ready signal received");
+  // If we have cached data, send it now
+  if (cachedAnalysisData) {
+    console.log("[Main] Sending cached analysis data");
+    sendToMainWindow('analysis-data', cachedAnalysisData);
+    cachedAnalysisData = null;
+  }
+});
+
+// Updated handler for show-analysis
+ipcMain.on('send-analysis-data', (event, analysisData) => {
+  console.log("[Main] Received analysis data to display");
+  
+  // Navigate to analysis page
+  sendToMainWindow('navigate', { path: '/interview-analysis' });
+  
+  // Cache the data to ensure it's available when the component loads
+  cachedAnalysisData = analysisData;
+  
+  // Send analysis data with a shorter delay to ensure navigation starts
+  setTimeout(() => {
+    if (!sendToMainWindow('analysis-data', analysisData)) {
+      console.log("[Main] Analysis window not ready, data cached for later");
+    }
+  }, 500); // Reduced delay for better responsiveness
+});
+
+
+// Handle errors from the renderer
+ipcMain.on('error', (event, message) => {
+  console.error(`[Main] Error from renderer: ${message}`);
+});
+
+// Debug handler to help track what's happening
+ipcMain.on('debug', (event, message) => {
+  console.log(`[DEBUG] ${message}`);
+});
 
   // Forward interview data to controller window
   ipcMain.on('interview-data', (event, data) => {

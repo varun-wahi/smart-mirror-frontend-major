@@ -19,6 +19,16 @@ const validSendChannels = [
 'request-scroll',
 'request-question-details',
 'request-close-question-details',
+'close-question-details',
+'analysis-component-ready',
+'change-tab',
+'scroll',
+'show-question-details',
+
+
+
+
+
 ];
 const validReceiveChannels = [...validSendChannels];
 

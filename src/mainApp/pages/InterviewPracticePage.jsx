@@ -34,7 +34,7 @@ const InterviewPracticePage = () => {
       if (!interviewData) {
         requestInterviewData();
       }
-    }, 5000);
+    }, []);
     
     // Check for cached data in sessionStorage - FIRST PRIORITY
     const cachedData = sessionStorage.getItem("interviewData");
