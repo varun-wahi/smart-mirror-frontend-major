@@ -28,8 +28,8 @@ function createMainWindow() {
   mainWindowReady = false; // Reset ready state
   
   mainWindow = new BrowserWindow({
-    // fullscreen: true, // Fullscreen for the main window
-    fullscreen: false, // Set to false for easier testing on same screen
+    fullscreen: true, // Fullscreen for the main window
+    // fullscreen: false, // Set to false for easier testing on same screen
     width: 800,
     height: 800,
     x: 700, // Position within the main display for testing
@@ -44,7 +44,7 @@ function createMainWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
-  mainWindow.webContents.openDevTools({ mode: 'detach' });
+  // mainWindow.webContents.openDevTools({ mode: 'detach' });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -54,14 +54,20 @@ function createMainWindow() {
 
 // Create the control window (Controller App)
 function createControlWindow() {
-  controlWindowReady = false; // Reset ready state
-  
+  controlWindowReady = false;
+
+  // Get all connected displays
+  const displays = screen.getAllDisplays();
+
+  // Use the second display if available, otherwise default to primary
+  const externalDisplay = displays.length > 1 ? displays[1] : displays[0];
+
   controlWindow = new BrowserWindow({
-    fullscreen: false, // Set to false for easier testing on same screen
-    width: 600,
-    height: 800,
-    x: 20, // Position within the main display for testing
-    y: 50,
+    x: externalDisplay.bounds.x,
+    y: externalDisplay.bounds.y,
+    width: externalDisplay.bounds.width,
+    height: externalDisplay.bounds.height,
+    fullscreen: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -71,7 +77,6 @@ function createControlWindow() {
   });
 
   controlWindow.loadFile(path.join(__dirname, '../dist/control.html'));
-  controlWindow.webContents.openDevTools({ mode: 'detach' });
 
   controlWindow.on('closed', () => {
     controlWindow = null;
