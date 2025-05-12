@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import dotenv from "dotenv";
 
 const QuestionNavigatorPage = () => {
   const [interviewData, setInterviewData] = useState(null);
@@ -20,7 +21,9 @@ const QuestionNavigatorPage = () => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  const API_URL = "http://localhost:5030"
+    dotenv.config();
+
+    const API_URL = process.env.REACT_APP_PYTHON_LOCAL_BACKEND_URL || "http://localhost:5030";
 
   // Memoized request interview data function
   const requestInterviewData = useCallback(() => {
@@ -338,79 +341,71 @@ const QuestionNavigatorPage = () => {
 
   const totalQuestions = interviewData.questions.length;
   const currentQuestion = interviewData.questions[currentIndex];
-
-  return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6 relative">
-  {/* Back to Home Button */}
-<button 
-  onClick={() => {
-    // Send IPC to display app
-    if (window.api) {
-      window.api.send("navigate", { path: "/" });
-      console.log("Sent to display:", "/");
-    } else {
-      console.error("IPC not available");
-    }
-    
-    // Also navigate in React
-    navigate('/');
-  }}
-  className="absolute top-6 left-6 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-md flex items-center"
->
-  <span className="mr-1">←</span> Back to Home
-</button>
-
+return (
+  <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-2 relative">
+    {/* Back to Home Button */}
+    <button 
+      onClick={() => {
+        // Send IPC to display app
+        if (window.api) {
+          window.api.send("navigate", { path: "/" });
+          console.log("Sent to display:", "/");
+        } else {
+          console.error("IPC not available");
+        }
+        
+        // Also navigate in React
+        navigate('/');
+      }}
+      className="absolute top-2 left-2 bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-md flex items-center text-sm"
+    >
+      <span className="mr-1">←</span> Back
+    </button>
       
-      <h1 className="text-2xl font-bold mb-4">Interview Questions</h1>
-      
-      <div className="w-full max-w-3xl bg-gray-800 p-6 rounded-xl shadow-lg">
-        <p className="text-lg mb-4">
-          <span className="text-gray-400">Question {currentIndex + 1} of {totalQuestions}:</span><br />
-          <span className="text-white font-medium">{currentQuestion.question}</span>
-        </p>
+    <div className="w-full max-w-full bg-gray-800 p-4 rounded-xl shadow-lg">
+      <p className="text-sm mb-2 text-gray-400">Question {currentIndex + 1}/{totalQuestions}</p>
 
-        <div className="mb-4">
-          <label className="block text-gray-300 text-sm mb-1">Your Answer:</label>
-          <div className="w-full bg-gray-700 p-4 rounded-md min-h-[80px] text-white whitespace-pre-wrap">
-            {transcription || "No answer recorded yet."}
-          </div>
-        </div>
-
-        <div className="flex gap-4 mt-4 flex-wrap justify-between">
-          <button
-            onClick={handleSpeakQuestion}
-            className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-md font-medium"
-          >
-            🔊 Hear Question
-          </button>
-          
-          <button
-            onClick={handleToggleRecording}
-            className={`text-white px-4 py-2 rounded-md font-medium ${getRecordButtonClass()}`}
-          >
-            🎤 {getRecordButtonText()}
-          </button>
-        </div>
-
-        <div className="flex justify-between mt-8">
-          <button
-            onClick={handlePrev}
-            disabled={currentIndex === 0}
-            className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 px-4 py-2 rounded-md"
-          >
-            ← Previous
-          </button>
-
-          <button
-            onClick={handleNext}
-            className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-md"
-          >
-            {currentIndex === totalQuestions - 1 ? "Finish →" : "Next →"}
-          </button>
+      <div className="mb-3">
+        <div className="w-full bg-gray-700 p-3 rounded-md min-h-[60px] text-white text-sm whitespace-pre-wrap">
+          {transcription || "No answer recorded yet."}
         </div>
       </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <button
+          onClick={handleSpeakQuestion}
+          className="bg-indigo-600 hover:bg-indigo-500 px-2 py-4 rounded-md font-medium text-lg flex items-center justify-center"
+        >
+          🔊 Hear Question
+        </button>
+        
+        <button
+          onClick={handleToggleRecording}
+          className={`text-white px-2 py-4 rounded-md font-medium text-lg flex items-center justify-center ${getRecordButtonClass()}`}
+        >
+          🎤 {getRecordButtonText()}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={handlePrev}
+          disabled={currentIndex === 0}
+          className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 px-2 py-4 rounded-md text-lg"
+        >
+          ← Previous
+        </button>
+
+        <button
+          onClick={handleNext}
+          className="bg-green-600 hover:bg-green-500 px-2 py-4 rounded-md text-lg"
+        >
+          {currentIndex === totalQuestions - 1 ? "Finish →" : "Next →"}
+        </button>
+      </div>
     </div>
-  );
+  </div>
+);
 };
 
 export default QuestionNavigatorPage;
