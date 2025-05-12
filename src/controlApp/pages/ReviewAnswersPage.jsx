@@ -14,29 +14,26 @@ const ReviewAnswersPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Load interview data and transcriptions from session storage
-    const storedData = sessionStorage.getItem('interviewData');
-    if (storedData) {
-      const parsedData = JSON.parse(storedData);
-      setInterviewData(parsedData);
-    }
+  // Load interview data and transcriptions from session storage
+  const storedData = sessionStorage.getItem('interviewData');
+  if (storedData) {
+    const parsedData = JSON.parse(storedData);
+    setInterviewData(parsedData);
+    
+    // Debug logging
+    console.log('Stored Interview Data:', parsedData);
+  }
 
-    const storedTranscriptions = JSON.parse(sessionStorage.getItem('transcriptions') || '{}');
-    setTranscriptions(storedTranscriptions);
+  const storedTranscriptions = JSON.parse(sessionStorage.getItem('transcriptions') || '{}');
+  console.log('Stored Transcriptions:', storedTranscriptions);
+  setTranscriptions(storedTranscriptions);
 
-    // Try to load any cached analysis results
-    const storedAnalysis = sessionStorage.getItem('analysisResults');
-    if (storedAnalysis) {
-      setAnalysisResults(JSON.parse(storedAnalysis));
-    }
-
-    // Load overall analysis if available
-    const storedOverallAnalysis = sessionStorage.getItem('overallAnalysis');
-    if (storedOverallAnalysis) {
-      setOverallAnalysis(JSON.parse(storedOverallAnalysis));
-    }
-  }, []);
-
+  // Log number of questions and transcriptions
+  if (JSON.parse(storedData)?.questions) {
+    console.log('Number of Questions:', JSON.parse(storedData).questions.length);
+    console.log('Number of Transcriptions:', Object.keys(storedTranscriptions).length);
+  }
+}, []);
   // Calculate overall score whenever analysis results change
   useEffect(() => {
     if (Object.keys(analysisResults).length > 0) {
@@ -50,26 +47,47 @@ const ReviewAnswersPage = () => {
     navigate("/");
   };
 
-  const analyzeAllAnswers = async () => {
-    if (!interviewData?.questions?.length) return;
+const analyzeAllAnswers = async () => {
+  console.log('Current Interview Data:', interviewData);
+  console.log('Current Transcriptions:', transcriptions);
 
-    setIsAnalyzing(true);
-    setAnalysisError(null);
-    const results = { ...analysisResults };
+  if (!interviewData?.questions?.length) {
+    console.error('No interview questions available');
+    return;
+  }
 
-    try {
-      for (let i = 0; i < interviewData.questions.length; i++) {
-        if (transcriptions[i]) {
-          setCurrentAnalysisIndex(i);
-          try {
-            const result = await analyzeAnswer(interviewData.questions[i].question, transcriptions[i], i);
-            results[i] = result;
-          } catch (error) {
-            console.error(`Error analyzing answer ${i}:`, error);
-          }
+  setIsAnalyzing(true);
+  setAnalysisError(null);
+  const results = { ...analysisResults };
+
+  try {
+    for (let i = 0; i < interviewData.questions.length; i++) {
+      console.log(`Checking transcription for question ${i}:`, transcriptions[i]);
+
+      if (transcriptions[i]) {
+        console.log(`Attempting to analyze question ${i}:`, {
+          question: interviewData.questions[i].question,
+          transcription: transcriptions[i]
+        });
+
+        setCurrentAnalysisIndex(i);
+        try {
+          const result = await analyzeAnswer(interviewData.questions[i].question, transcriptions[i], i);
+          console.log(`Analysis result for question ${i}:`, result);
+          results[i] = result;
+        } catch (error) {
+          console.error(`Error analyzing answer ${i}:`, error);
         }
+      } else {
+        console.warn(`No transcription for question ${i}`);
       }
+    }
 
+    // Log the final results before setting state
+    console.log('Final analysis results:', results);
+
+    // Only set results if something was analyzed
+    if (Object.keys(results).length > 0) {
       setAnalysisResults(results);
       sessionStorage.setItem('analysisResults', JSON.stringify(results));
 
@@ -77,14 +95,18 @@ const ReviewAnswersPage = () => {
       await analyzeFullInterview();
       // After full analysis is done, navigate to analysis screens
       handleShowAnalysis();
-    } catch (error) {
-      console.error('Error during analysis:', error);
-      setAnalysisError('An error occurred during analysis. Please try again.');
-    } finally {
-      setCurrentAnalysisIndex(null);
-      setIsAnalyzing(false);
+    } else {
+      console.error('No answers were analyzed');
+      setAnalysisError('No transcriptions found to analyze');
     }
-  };
+  } catch (error) {
+    console.error('Error during analysis:', error);
+    setAnalysisError('An error occurred during analysis. Please try again.');
+  } finally {
+    setCurrentAnalysisIndex(null);
+    setIsAnalyzing(false);
+  }
+};
 
   const analyzeAnswer = async (question, answer, index) => {
     try {
@@ -147,19 +169,68 @@ const ReviewAnswersPage = () => {
     }
   };
 
-  const handleShowAnalysis = () => {
-    const analysisData = {
-      analysisResults,
-      overallAnalysis,
-      overallScore,
-      topic: interviewData?.topic,
-      difficulty: interviewData?.difficulty
-    };
+const handleShowAnalysis = () => {
+  // Retrieve stored analysis data if current state is empty
+  const storedAnalysisResults = JSON.parse(sessionStorage.getItem('analysisResults') || '{}');
+  const storedOverallAnalysis = JSON.parse(sessionStorage.getItem('overallAnalysis') || 'null');
+  const storedOverallScore = sessionStorage.getItem('overallScore');
 
-    // Send data to both screens
-    window.api.send('show-analysis', analysisData);
-    window.api.send('navigate', { path: '/interview-analysis-controller' });
+  // Calculate overall score if not already set
+  const calculatedOverallScore = overallScore !== null 
+    ? overallScore 
+    : storedOverallScore 
+      ? parseFloat(storedOverallScore) 
+      : storedOverallAnalysis?.overallScore 
+        ? storedOverallAnalysis.overallScore 
+        : calculateOverallScore(storedAnalysisResults);
+
+  const analysisData = {
+    analysisResults: Object.keys(analysisResults).length > 0 ? analysisResults : storedAnalysisResults,
+    overallAnalysis: overallAnalysis || storedOverallAnalysis,
+    overallScore: calculatedOverallScore,
+    topic: interviewData?.topic || 'Unknown Topic',
+    difficulty: interviewData?.difficulty || 'Unknown Difficulty'
   };
+
+  console.log('Full analysis data being sent:', {
+    analysisResultsCount: Object.keys(analysisData.analysisResults).length,
+    overallAnalysis: analysisData.overallAnalysis,
+    overallScore: analysisData.overallScore,
+    topic: analysisData.topic,
+    difficulty: analysisData.difficulty
+  });
+
+  // Check if we have meaningful analysis data
+  if (Object.keys(analysisData.analysisResults).length === 0 && !analysisData.overallAnalysis) {
+    console.error('Cannot send empty analysis results');
+    // Optional: Show a user-friendly error message
+    alert('No analysis data available. Please analyze your answers first.');
+    return;
+  }
+
+  // Ensure overallScore is a number
+  if (analysisData.overallScore === null || isNaN(analysisData.overallScore)) {
+    analysisData.overallScore = 0;
+  }
+
+  // Use 'send-analysis-data' instead of 'show-analysis'
+  window.api.send('send-analysis-data', analysisData);
+  navigate('/interview-analysis-controller');
+};
+
+// Helper function to calculate overall score if not already set
+const calculateOverallScore = (analysisResults) => {
+  if (Object.keys(analysisResults).length === 0) return 0;
+
+  const scores = Object.values(analysisResults)
+    .map(result => result.overallScore || 0)
+    .filter(score => !isNaN(score));
+
+  if (scores.length === 0) return 0;
+
+  const avgScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+  return Math.round(avgScore * 10) / 10; // Round to 1 decimal place
+};
 
   const handleAnalyzeSingleAnswer = async (question, answer, index) => {
     setCurrentAnalysisIndex(index);

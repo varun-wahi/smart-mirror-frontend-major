@@ -39,10 +39,10 @@ function App() {
 
   useEffect(() => {
     if (!window.api) return;
-  
+
     const handleNavigation = (data) => {
       console.log("Navigation command received:", data);
-  
+
       if (typeof data === "string") {
         navigate(data);
       } else if (typeof data === "object" && data.path) {
@@ -55,9 +55,9 @@ function App() {
         console.error("Invalid navigation data received:", data);
       }
     };
-  
+
     window.api.on("navigate", handleNavigation);
-  
+
     return () => {
       window.api.removeAllListeners("navigate");
     };
@@ -83,10 +83,10 @@ function App() {
       />
       <Route path="/interview-practice" element={<InterviewPracticePage />} />
 
-<Route path="/register-face" element={<FaceRegistrationPage />} />
+      <Route path="/register-face" element={<FaceRegistrationPage />} />
       {/* Add more routes as needed */}
-      <Route path="/interview-performance" element={<InterviewPerformancePage />} /> {/* Fallback route */}
-      
+      <Route path="/interview-analysis" element={<InterviewPerformancePage />} /> {/* Fallback route */}
+
     </Routes>
   );
 }

@@ -3,20 +3,22 @@ const { contextBridge, ipcRenderer } = require('electron');
 console.log('Preload script loaded successfully');
 
 const validSendChannels = [
-  'navigate',
-  'control-action',
-  'show-interview-screen',
-  'interview-data',
-  'question-index',
-  'speak-question',
-  'transcribe-audio',
-  'transcription-complete',
-  // New channels
-  'show-analysis',
-  'request-tab-change',
-  'request-scroll',
-  'request-question-details',
-  'request-close-question-details'
+'navigate',
+'control-action',
+'show-interview-screen',
+'interview-data',
+'question-index',
+'speak-question',
+'transcribe-audio',
+'transcription-complete',
+// New channels
+'send-analysis-data',
+'analysis-data',
+'show-analysis',
+'request-tab-change',
+'request-scroll',
+'request-question-details',
+'request-close-question-details',
 ];
 const validReceiveChannels = [...validSendChannels];
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const AnalysisController = () => {
   const [currentTab, setCurrentTab] = useState('radar');
@@ -56,8 +57,11 @@ const AnalysisController = () => {
   };
 
   // Close analysis and return to previous screen
+  const navigate = useNavigate();
+
   const handleCloseAnalysis = () => {
-    window.api.send('navigate', { path: '/interview-practice' });
+    navigate('/');
+    window.api.send('navigate', { path: '/' });
   };
 
   return (
@@ -74,46 +78,46 @@ const AnalysisController = () => {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex justify-between mb-4">
+      <div className="grid grid-cols-4 gap-4 mb-4">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => handleTabChange(tab.id)}
-            className={`flex items-center justify-center w-full mx-1 p-2 rounded ${
+            className={`flex flex-col items-center justify-center w-full h-20 p-4 rounded ${
               currentTab === tab.id 
                 ? 'bg-blue-600 text-white' 
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
             }`}
           >
-            <span className="mr-2">{tab.icon}</span>
-            {tab.label}
+            <span className="text-2xl">{tab.icon}</span>
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>
 
       {/* Scrolling Controls */}
-      <div className="flex justify-between mb-4">
+      <div className="grid grid-cols-2 gap-4 mb-4">
         <button 
           onClick={() => handleScroll('up')}
-          className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded w-full mr-2"
+          className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded h-16"
         >
           ↑ Scroll Up
         </button>
         <button 
           onClick={() => handleScroll('down')}
-          className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded w-full"
+          className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded h-16"
         >
           ↓ Scroll Down
         </button>
       </div>
 
       {/* Question Details Controls */}
-      <div className="grid grid-cols-4 gap-2 mb-4">
+      <div className="grid grid-cols-4 gap-4 mb-4">
         {availableQuestions.map((q) => (
           <button
             key={q}
             onClick={() => handleQuestionDetails(q)}
-            className="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded"
+            className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded h-16"
           >
             Q{q + 1}
           </button>

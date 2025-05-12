@@ -85,11 +85,11 @@ const InterviewPerformancePage = () => {
     };
 
     // Setup IPC listeners
-    window.api.on('analysis-data', handleAnalysisData);
-    window.api.on('change-tab', handleTabChange);
-    window.api.on('scroll', handleScroll);
-    window.api.on('show-question-details', handleQuestionDetailsRequest);
-    window.api.on('close-question-details', handleCloseQuestionDetails);
+    window.api.on('show-analysis', handleAnalysisData);
+    window.api.on('request-tab-change', handleTabChange);
+    window.api.on('request-scroll', handleScroll);
+    window.api.on('request-question-details', handleQuestionDetailsRequest);
+    window.api.on('request-close-question-details', handleCloseQuestionDetails);
 
     // Prepare chart data when analysis results change
     if (Object.keys(analysisResults).length > 0) {
@@ -98,11 +98,11 @@ const InterviewPerformancePage = () => {
 
     // Cleanup listeners
     return () => {
-      window.api.removeListener('analysis-data', handleAnalysisData);
-      window.api.removeListener('change-tab', handleTabChange);
-      window.api.removeListener('scroll', handleScroll);
-      window.api.removeListener('show-question-details', handleQuestionDetailsRequest);
-      window.api.removeListener('close-question-details', handleCloseQuestionDetails);
+      window.api.removeListener('show-analysis', handleAnalysisData);
+      window.api.removeListener('request-tab-change', handleTabChange);
+      window.api.removeListener('request-scroll', handleScroll);
+      window.api.removeListener('request-question-details', handleQuestionDetailsRequest);
+      window.api.removeListener('request-close-question-details', handleCloseQuestionDetails);
     };
   }, [analysisResults]);
 

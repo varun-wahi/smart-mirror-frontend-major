@@ -71,7 +71,7 @@ function createControlWindow() {
   });
 
   controlWindow.loadFile(path.join(__dirname, '../dist/control.html'));
-  // controlWindow.webContents.openDevTools({ mode: 'detach' });
+  controlWindow.webContents.openDevTools({ mode: 'detach' });
 
   controlWindow.on('closed', () => {
     controlWindow = null;
@@ -149,6 +149,11 @@ function setupIPCChannels() {
     sendToMainWindow('navigate', page);
   });
 
+  ipcMain.on('send-analysis-data', (event, analysisData) => {
+  // Handle the analysis data
+  mainWindow.webContents.send('analysis-data', analysisData);
+});
+
   // Handle interview screen setup
   ipcMain.on('show-interview-screen', (event, data) => {
     console.log("[Main] Received show-interview-screen with data:", data);
@@ -197,6 +202,7 @@ function setupIPCChannels() {
   // Handle analysis data display
 ipcMain.on('show-analysis', (event, analysisData) => {
   console.log("[Main] Received analysis data to display");
+  console.log(analysisData);
   
   // Navigate to analysis page
   sendToMainWindow('navigate', { path: '/interview-analysis' });
@@ -206,7 +212,7 @@ ipcMain.on('show-analysis', (event, analysisData) => {
     if (!sendToMainWindow('analysis-data', analysisData)) {
       console.log("[Main] Analysis window not ready, data queued");
     }
-  }, 500);
+  }, 5000);
 });
 
 // Forward tab change request to main window
