@@ -84,7 +84,7 @@ const TouchscreenAppGrid = () => {
 
       <button
         onClick={toggleMotionDetection}
-        className={`flex flex-col items-center justify-center ${isMotionActive ? "bg-green-600" : "bg-red-600"
+        className={`flex flex-col items-center justify-center ${isMotionActive ?  "bg-red-600":"bg-green-600"
           } hover:bg-opacity-80 active:bg-opacity-70 rounded-xl shadow-lg p-6 transition-transform transform hover:scale-105 focus:ring-2 focus:ring-teal-500`}
         aria-label="Toggle Lights"
       >
@@ -102,15 +102,7 @@ const TouchscreenAppGrid = () => {
           </div>
           </button>
 
-          <div className="col-span-2 flex gap-4">
-  <button
-    onClick={handleShutdown}
-    className="flex-1 flex items-center justify-center bg-red-700 hover:bg-red-600 text-white rounded-xl shadow-lg p-6 text-center font-semibold text-lg transition-transform transform hover:scale-105 focus:ring-2 focus:ring-red-500"
-    aria-label="Shutdown System"
-  >
-    Shutdown
-  </button>
-
+          <div className="flex gap-4 w-full">
   <button
     onClick={async () => {
       if (window.confirm("Are you sure you want to reboot the system?")) {
@@ -122,10 +114,16 @@ const TouchscreenAppGrid = () => {
         }
       }
     }}
-    className="flex-1 flex items-center justify-center bg-orange-600 hover:bg-orange-500 text-white rounded-xl shadow-lg p-6 text-center font-semibold text-lg transition-transform transform hover:scale-105 focus:ring-2 focus:ring-orange-400"
-    aria-label="Reboot System"
+    className="w-1/2 bg-orange-600 hover:bg-orange-500 text-white py-4 rounded-xl shadow-lg text-lg font-semibold transition-transform transform hover:scale-105"
   >
     Reboot
+  </button>
+
+  <button
+    onClick={handleShutdown}
+    className="w-1/2 bg-red-700 hover:bg-red-600 text-white py-4 rounded-xl shadow-lg text-lg font-semibold transition-transform transform hover:scale-105"
+  >
+    Power Off
   </button>
 </div>
     </div>
