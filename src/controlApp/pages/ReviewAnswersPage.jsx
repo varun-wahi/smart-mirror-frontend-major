@@ -285,18 +285,6 @@ const ReviewAnswersPage = () => {
       questionAnalysis: analysisResults
     };
 
-    // Perform local download
-    // const jsonString = JSON.stringify(report, null, 2);
-    // const blob = new Blob([jsonString], { type: 'application/json' });
-    // const url = URL.createObjectURL(blob);
-    // const link = document.createElement('a');
-    // link.href = url;
-    // link.download = `interview-results-${new Date().toISOString().slice(0, 10)}.json`;
-    // document.body.appendChild(link);
-    // link.click();
-    // document.body.removeChild(link);
-    // URL.revokeObjectURL(url);
-    
     // Show Telegram dialog
     // setShowTelegramDialog(true);
     handleSendToTelegram();
@@ -383,33 +371,17 @@ const ReviewAnswersPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-900 text-white">
-      <div className="p-4 md:p-6 border-b border-gray-700 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="p-4 md:p-6 border-b border-gray-700 flex items-center justify-between">
         <button
           onClick={handleBackToHome}
           className="text-gray-300 hover:text-white bg-gray-800 px-4 py-2 rounded-lg font-medium flex items-center"
+          disabled={isAnalyzing || isSendingToTelegram}
         >
           ← Back to Home
         </button>
         <h1 className="text-lg md:text-xl font-semibold text-center">Review Answers</h1>
-
-        <div className="flex gap-2">
-          <button
-            onClick={analyzeAllAnswers}
-            disabled={isAnalyzing}
-            className={`px-4 py-2 rounded-lg font-medium ${isAnalyzing ? 'bg-gray-700 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'
-              }`}
-          >
-            {isAnalyzing ? 'Analyzing...' : 'Analyze All Answers'}
-          </button>
-
-          {Object.keys(analysisResults).length > 0 && (
-            <button
-              onClick={downloadResults}
-              className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg font-medium"
-            >
-              Download Results
-            </button>
-          )}
+        <div className="w-32">
+          {/* Empty div for spacing */}
         </div>
       </div>
 
@@ -419,6 +391,64 @@ const ReviewAnswersPage = () => {
             {analysisError}
           </div>
         )}
+
+        {/* New Action Buttons Section - Big prominent buttons */}
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button
+            onClick={analyzeAllAnswers}
+            disabled={isAnalyzing || isSendingToTelegram || Object.keys(analysisResults).length === interviewData?.questions?.length}
+            className={`p-4 rounded-lg font-medium text-lg flex items-center justify-center ${
+              isAnalyzing || isSendingToTelegram
+                ? 'bg-gray-700 cursor-not-allowed text-gray-400'
+                : Object.keys(analysisResults).length === interviewData?.questions?.length
+                  ? 'bg-green-800 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-500'
+            }`}
+          >
+            {isAnalyzing ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Analyzing...
+              </>
+            ) : Object.keys(analysisResults).length === interviewData?.questions?.length ? (
+              <>
+                <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                Analysis Complete
+              </>
+            ) : (
+              'Analyze All Answers'
+            )}
+          </button>
+
+          <button
+            onClick={downloadResults}
+            disabled={isAnalyzing || isSendingToTelegram || Object.keys(analysisResults).length === 0}
+            className={`p-4 rounded-lg font-medium text-lg flex items-center justify-center ${
+              isAnalyzing || isSendingToTelegram
+                ? 'bg-gray-700 cursor-not-allowed text-gray-400'
+                : Object.keys(analysisResults).length === 0
+                  ? 'bg-gray-700 cursor-not-allowed text-gray-400'
+                  : 'bg-green-600 hover:bg-green-500'
+            }`}
+          >
+            {isSendingToTelegram ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Sending to Telegram...
+              </>
+            ) : (
+              'Download Results'
+            )}
+          </button>
+        </div>
 
         {overallScore !== null && (
           <div className="mb-8 bg-gray-800 p-6 rounded-lg">
@@ -514,9 +544,12 @@ const ReviewAnswersPage = () => {
                 <span>{!transcriptions[index] ? "Record an answer first" : "Not yet analyzed"}</span>
                 <button
                   onClick={() => handleAnalyzeSingleAnswer(qObj.question, transcriptions[index], index)}
-                  disabled={isAnalyzing || !transcriptions[index]}
-                  className={`px-3 py-1 rounded text-sm ${isAnalyzing || !transcriptions[index] ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'
-                    }`}
+                  disabled={isAnalyzing || isSendingToTelegram || !transcriptions[index]}
+                  className={`px-3 py-1 rounded text-sm ${
+                    isAnalyzing || isSendingToTelegram || !transcriptions[index] 
+                      ? 'bg-gray-600 cursor-not-allowed' 
+                      : 'bg-blue-600 hover:bg-blue-500'
+                  }`}
                 >
                   {currentAnalysisIndex === index ? 'Analyzing...' : 'Analyze'}
                 </button>
