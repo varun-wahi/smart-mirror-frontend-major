@@ -102,22 +102,32 @@ const TouchscreenAppGrid = () => {
           </div>
           </button>
 
-          <button
-          onClick={handleShutdown}
-          className="flex flex-col items-center justify-center bg-gradient-to-b from-gray-800 to-zinc-900 hover:from-gray-700 hover:to-zinc-800 rounded-xl shadow-lg p-6 transition-transform transform hover:scale-105 focus:ring-2 focus:ring-red-500"
-          aria-label="Shutdown System"
-          >
-          <img
-            src="icons/power.png"
-            alt="Power Icon"
-            className="w-16 h-16 mb-2"
-            onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = "icons/default.png";
-          }}
-        />
-        <div className="text-white text-center text-sm font-medium">Power Off</div>
-      </button>
+          <div className="col-span-2 flex gap-4">
+  <button
+    onClick={handleShutdown}
+    className="flex-1 flex items-center justify-center bg-red-700 hover:bg-red-600 text-white rounded-xl shadow-lg p-6 text-center font-semibold text-lg transition-transform transform hover:scale-105 focus:ring-2 focus:ring-red-500"
+    aria-label="Shutdown System"
+  >
+    Shutdown
+  </button>
+
+  <button
+    onClick={async () => {
+      if (window.confirm("Are you sure you want to reboot the system?")) {
+        try {
+          const response = await axios.post("http://localhost:5030/reboot");
+          console.log("Reboot command sent:", response.data);
+        } catch (error) {
+          console.error("Error sending reboot command:", error);
+        }
+      }
+    }}
+    className="flex-1 flex items-center justify-center bg-orange-600 hover:bg-orange-500 text-white rounded-xl shadow-lg p-6 text-center font-semibold text-lg transition-transform transform hover:scale-105 focus:ring-2 focus:ring-orange-400"
+    aria-label="Reboot System"
+  >
+    Reboot
+  </button>
+</div>
     </div>
   );
 };
