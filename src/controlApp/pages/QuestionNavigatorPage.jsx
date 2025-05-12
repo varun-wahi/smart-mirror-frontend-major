@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+mport React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 const QuestionNavigatorPage = () => {
@@ -20,19 +20,8 @@ const QuestionNavigatorPage = () => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  // Update refs when state changes
-  useEffect(() => {
-    currentIndexRef.current = currentIndex;
-  }, [currentIndex]);
-
-  useEffect(() => {
-    transcriptionsRef.current = transcriptions;
-    // Save transcriptions to sessionStorage whenever they change
-    sessionStorage.setItem('transcriptions', JSON.stringify(transcriptions));
-  }, [transcriptions]);
-
-  // Function to request data if it hasn't arrived after a timeout
-  const requestInterviewData = () => {
+  // Memoized request interview data function
+  const requestInterviewData = useCallback(() => {
     console.log("[QuestionNavigatorPage] Requesting interview data from main process");
     window.api.send("request-interview-data");
     
@@ -41,11 +30,11 @@ const QuestionNavigatorPage = () => {
       if (!interviewData) {
         requestInterviewData();
       }
-    }, 10000); // Retry every 5 seconds until data is received
-  };
+    }, 10000); // Retry every 10 seconds until data is received
+  }, [interviewData]);
 
   // Function to speak text using the API
-  const speakText = async (text) => {
+  const speakText = useCallback(async (text) => {
     if (!text) return;
     
     try {
@@ -64,10 +53,22 @@ const QuestionNavigatorPage = () => {
     } catch (error) {
       console.error("[QuestionNavigatorPage] Failed to call speech API:", error);
     }
-  };
+  }, []);
+
+  // Update refs when state changes
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  useEffect(() => {
+    transcriptionsRef.current = transcriptions;
+    // Save transcriptions to sessionStorage whenever they change
+    sessionStorage.setItem('transcriptions', JSON.stringify(transcriptions));
+  }, [transcriptions]);
 
   // Initialize and set up event listeners
   useEffect(() => {
+    let isMounted = true;
     setIsLoading(true);
     
     // Setup loading timeout to request data if not received
@@ -78,6 +79,8 @@ const QuestionNavigatorPage = () => {
     }, 3000); // Wait 3 seconds before first retry
 
     const handleInterviewData = (data) => {
+      if (!isMounted) return;
+
       console.log("[QuestionNavigatorPage] Received interview data:", data);
       
       // Clear any loading timeout
@@ -99,23 +102,14 @@ const QuestionNavigatorPage = () => {
         
         // Send initial question index to main process
         setTimeout(() => sendQuestionIndex(0), 100);
-        
-        // Speak the first question
-        // setTimeout(() => {
-        //   if (data.questions[0]) {
-        //     speakText(data.questions[0].question);
-        //   }
-        // }, 500);
       } else {
         console.error("[QuestionNavigatorPage] Invalid interview data format:", data);
       }
     };
 
-    // Set up event listeners for communication with main process
-    window.api.on("interview-data", handleInterviewData);
+    const handleTranscriptionComplete = (result) => {
+      if (!isMounted) return;
 
-    // Handle transcription results coming back from main process
-    window.api.on("transcription-complete", (result) => {
       console.log("[QuestionNavigatorPage] Transcription result:", result);
       
       // Update transcriptions state with new result
@@ -133,7 +127,11 @@ const QuestionNavigatorPage = () => {
       
       // Reset recording state
       setRecordingState("idle");
-    });
+    };
+
+    // Set up event listeners for communication with main process
+    window.api.on("interview-data", handleInterviewData);
+    window.api.on("transcription-complete", handleTranscriptionComplete);
 
     // Load cached interview data if available
     const cachedData = sessionStorage.getItem("interviewData");
@@ -149,15 +147,19 @@ const QuestionNavigatorPage = () => {
 
     // Clean up on unmount
     return () => {
-      window.api.removeAllListeners("interview-data");
-      window.api.removeAllListeners("transcription-complete");
+      isMounted = false;
+      
+      // Precisely remove the specific listener functions
+      window.api.removeListener("interview-data", handleInterviewData);
+      window.api.removeListener("transcription-complete", handleTranscriptionComplete);
+      
       stopRecording();
       
       if (loadingTimeoutRef.current) {
         clearTimeout(loadingTimeoutRef.current);
       }
     };
-  }, []);
+  }, []); //
 
   // Helper function to send current question index to main process
   const sendQuestionIndex = (index) => {

@@ -7,6 +7,7 @@ import TeacherDataPage from './pages/TeacherDataPage.jsx';
 import InterviewPracticePage from './pages/InterviewPracticePage.jsx';
 import { InterviewProvider } from './utils/InterviewContext.jsx';
 import FaceRegistrationPage from './pages/FaceRegistrationPage.jsx';
+import InterviewPerformancePage from './pages/InterviewPerformancePage.jsx'; // Adjust the import path as needed
 
 
 import { useInterview } from "./utils/InterviewContext"; // adjust the path if needed
@@ -82,10 +83,9 @@ function App() {
       />
       <Route path="/interview-practice" element={<InterviewPracticePage />} />
 
-
-// In your router setup
 <Route path="/register-face" element={<FaceRegistrationPage />} />
-
+      {/* Add more routes as needed */}
+      <Route path="/interview-performance" element={<InterviewPerformancePage />} /> {/* Fallback route */}
       
     </Routes>
   );

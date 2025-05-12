@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import InterviewPerformancePage from './InterviewPerformancePage'; // Import the visualization component
+import InterviewPerformancePage from '../../mainApp/pages/InterviewPerformancePage'; // Import the visualization component
 
 const ReviewAnswersPage = () => {
   const [interviewData, setInterviewData] = useState(null);
@@ -29,7 +29,7 @@ const ReviewAnswersPage = () => {
     if (storedAnalysis) {
       setAnalysisResults(JSON.parse(storedAnalysis));
     }
-    
+
     // Load overall analysis if available
     const storedOverallAnalysis = sessionStorage.getItem('overallAnalysis');
     if (storedOverallAnalysis) {
@@ -52,11 +52,11 @@ const ReviewAnswersPage = () => {
 
   const analyzeAllAnswers = async () => {
     if (!interviewData?.questions?.length) return;
-    
+
     setIsAnalyzing(true);
     setAnalysisError(null);
     const results = { ...analysisResults };
-    
+
     try {
       for (let i = 0; i < interviewData.questions.length; i++) {
         if (transcriptions[i]) {
@@ -69,12 +69,14 @@ const ReviewAnswersPage = () => {
           }
         }
       }
-      
+
       setAnalysisResults(results);
       sessionStorage.setItem('analysisResults', JSON.stringify(results));
-      
+
       // After analyzing all individual answers, get the overall analysis
       await analyzeFullInterview();
+      // After full analysis is done, navigate to analysis screens
+      handleShowAnalysis();
     } catch (error) {
       console.error('Error during analysis:', error);
       setAnalysisError('An error occurred during analysis. Please try again.');
@@ -145,11 +147,25 @@ const ReviewAnswersPage = () => {
     }
   };
 
+  const handleShowAnalysis = () => {
+    const analysisData = {
+      analysisResults,
+      overallAnalysis,
+      overallScore,
+      topic: interviewData?.topic,
+      difficulty: interviewData?.difficulty
+    };
+
+    // Send data to both screens
+    window.api.send('show-analysis', analysisData);
+    window.api.send('navigate', { path: '/interview-analysis-controller' });
+  };
+
   const handleAnalyzeSingleAnswer = async (question, answer, index) => {
     setCurrentAnalysisIndex(index);
     setIsAnalyzing(true);
     setAnalysisError(null);
-    
+
     try {
       const result = await analyzeAnswer(question, answer, index);
       const updatedResults = { ...analysisResults, [index]: result };
@@ -159,7 +175,7 @@ const ReviewAnswersPage = () => {
       console.error(`Error analyzing answer ${index}:`, error);
       setAnalysisError(`Failed to analyze answer ${index + 1}. Please try again.`);
     }
-    
+
     setCurrentAnalysisIndex(null);
     setIsAnalyzing(false);
   };
@@ -179,10 +195,10 @@ const ReviewAnswersPage = () => {
         analysis: analysisResults[index] || null
       }))
     };
-    
+
     // Convert to JSON string
     const jsonString = JSON.stringify(report, null, 2);
-    
+
     // Create download link
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -201,7 +217,7 @@ const ReviewAnswersPage = () => {
     else if (score >= 6) colorClass = 'bg-blue-500';
     else if (score >= 4) colorClass = 'bg-yellow-500';
     else if (score >= 2) colorClass = 'bg-orange-500';
-    
+
     return (
       <div className="mb-2">
         <div className="flex justify-between items-center mb-1">
@@ -209,8 +225,8 @@ const ReviewAnswersPage = () => {
           <span className="text-sm font-medium">{score}/10</span>
         </div>
         <div className="w-full bg-gray-700 rounded-full h-2">
-          <div 
-            className={`${colorClass} h-2 rounded-full transition-all duration-500`} 
+          <div
+            className={`${colorClass} h-2 rounded-full transition-all duration-500`}
             style={{ width: `${score * 10}%` }}
           ></div>
         </div>
@@ -228,18 +244,17 @@ const ReviewAnswersPage = () => {
           ← Back to Home
         </button>
         <h1 className="text-lg md:text-xl font-semibold text-center">Review Answers</h1>
-        
+
         <div className="flex gap-2">
           <button
             onClick={analyzeAllAnswers}
             disabled={isAnalyzing}
-            className={`px-4 py-2 rounded-lg font-medium ${
-              isAnalyzing ? 'bg-gray-700 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'
-            }`}
+            className={`px-4 py-2 rounded-lg font-medium ${isAnalyzing ? 'bg-gray-700 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'
+              }`}
           >
             {isAnalyzing ? 'Analyzing...' : 'Analyze All Answers'}
           </button>
-          
+
           {Object.keys(analysisResults).length > 0 && (
             <button
               onClick={downloadResults}
@@ -265,34 +280,33 @@ const ReviewAnswersPage = () => {
               <div className="text-3xl font-bold">
                 {overallScore}/10
                 <span className="ml-2 text-lg">
-                  {overallScore >= 9 ? '(Excellent)' : 
-                   overallScore >= 7 ? '(Good)' : 
-                   overallScore >= 5 ? '(Average)' : 
-                   overallScore >= 3 ? '(Needs Improvement)' : '(Poor)'}
+                  {overallScore >= 9 ? '(Excellent)' :
+                    overallScore >= 7 ? '(Good)' :
+                      overallScore >= 5 ? '(Average)' :
+                        overallScore >= 3 ? '(Needs Improvement)' : '(Poor)'}
                 </span>
               </div>
             </div>
-            
+
             <div className="w-full bg-gray-700 rounded-full h-3 mb-6">
-              <div 
-                className={`h-3 rounded-full transition-all duration-500 ${
-                  overallScore >= 8 ? 'bg-green-500' : 
-                  overallScore >= 6 ? 'bg-blue-500' : 
-                  overallScore >= 4 ? 'bg-yellow-500' : 
-                  overallScore >= 2 ? 'bg-orange-500' : 'bg-red-500'
-                }`}
+              <div
+                className={`h-3 rounded-full transition-all duration-500 ${overallScore >= 8 ? 'bg-green-500' :
+                  overallScore >= 6 ? 'bg-blue-500' :
+                    overallScore >= 4 ? 'bg-yellow-500' :
+                      overallScore >= 2 ? 'bg-orange-500' : 'bg-red-500'
+                  }`}
                 style={{ width: `${overallScore * 10}%` }}
               ></div>
             </div>
-            
+
             <div className="text-gray-300 mb-4">
               {Object.keys(analysisResults).length} of {interviewData?.questions?.length || 0} answers analyzed
             </div>
 
             {/* Add the performance visualization component */}
             {Object.keys(analysisResults).length > 0 && (
-              <InterviewPerformancePage 
-                analysisResults={analysisResults} 
+              <InterviewPerformancePage
+                analysisResults={analysisResults}
                 overallAnalysis={overallAnalysis}
                 overallScore={overallScore}
               />
@@ -303,12 +317,12 @@ const ReviewAnswersPage = () => {
         {overallAnalysis && (
           <div className="mb-8 bg-gray-800 p-6 rounded-lg">
             <h2 className="text-xl font-bold mb-4">Interview Assessment</h2>
-            
+
             <div className="mb-4">
               <h3 className="text-lg font-medium mb-2">Key Insights</h3>
               <p className="text-gray-300">{overallAnalysis.keyInsights}</p>
             </div>
-            
+
             <div className="mb-4">
               <h3 className="text-lg font-medium mb-2">Strengths</h3>
               <ul className="list-disc pl-5 text-gray-300">
@@ -317,7 +331,7 @@ const ReviewAnswersPage = () => {
                 ))}
               </ul>
             </div>
-            
+
             <div className="mb-4">
               <h3 className="text-lg font-medium mb-2">Areas for Improvement</h3>
               <ul className="list-disc pl-5 text-gray-300">
@@ -326,7 +340,7 @@ const ReviewAnswersPage = () => {
                 ))}
               </ul>
             </div>
-            
+
             <div>
               <h3 className="text-lg font-medium mb-2">Development Plan</h3>
               <p className="text-gray-300">{overallAnalysis.developmentPlan}</p>
@@ -350,7 +364,7 @@ const ReviewAnswersPage = () => {
               </div>
               <div className="text-lg mt-1">{qObj.question}</div>
             </div>
-            
+
             <div className="p-4 bg-gray-800">
               <strong className="text-gray-300">Your Answer:</strong>
               <div className="mt-1 text-white">
@@ -364,7 +378,7 @@ const ReviewAnswersPage = () => {
                 {qObj.answer}
               </div>
             </div>
-            
+
             {analysisResults[index] ? (
               <div className="p-4 bg-gray-700 border-t border-gray-600">
                 <div className="flex justify-between items-center mb-4">
@@ -373,17 +387,17 @@ const ReviewAnswersPage = () => {
                     {analysisResults[index].overallScore}/10
                   </div>
                 </div>
-                
+
                 {renderScoreBar(analysisResults[index].relevanceScore, 'Relevance')}
                 {renderScoreBar(analysisResults[index].completenessScore, 'Completeness')}
                 {renderScoreBar(analysisResults[index].clarityScore, 'Clarity')}
                 {renderScoreBar(analysisResults[index].accuracyScore, 'Accuracy')}
-                
+
                 <div className="mt-4">
                   <h4 className="font-medium mb-2 text-gray-300">Feedback</h4>
                   <p>{analysisResults[index].feedback}</p>
                 </div>
-                
+
                 {analysisResults[index].improvementSuggestions && (
                   <div className="mt-4">
                     <h4 className="font-medium mb-2 text-gray-300">Improvement Suggestions</h4>
@@ -397,9 +411,8 @@ const ReviewAnswersPage = () => {
                 <button
                   onClick={() => handleAnalyzeSingleAnswer(qObj.question, transcriptions[index], index)}
                   disabled={isAnalyzing || !transcriptions[index]}
-                  className={`px-3 py-1 rounded text-sm ${
-                    isAnalyzing || !transcriptions[index] ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'
-                  }`}
+                  className={`px-3 py-1 rounded text-sm ${isAnalyzing || !transcriptions[index] ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'
+                    }`}
                 >
                   {currentAnalysisIndex === index ? 'Analyzing...' : 'Analyze'}
                 </button>

@@ -2,7 +2,22 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 console.log('Preload script loaded successfully');
 
-const validSendChannels = ['navigate', 'control-action', 'show-interview-screen', 'interview-data', 'question-index', 'speak-question', 'transcribe-audio','transcription-complete'];
+const validSendChannels = [
+  'navigate',
+  'control-action',
+  'show-interview-screen',
+  'interview-data',
+  'question-index',
+  'speak-question',
+  'transcribe-audio',
+  'transcription-complete',
+  // New channels
+  'show-analysis',
+  'request-tab-change',
+  'request-scroll',
+  'request-question-details',
+  'request-close-question-details'
+];
 const validReceiveChannels = [...validSendChannels];
 
 contextBridge.exposeInMainWorld('api', {
@@ -20,10 +35,18 @@ contextBridge.exposeInMainWorld('api', {
   },
   on: (channel, callback) => {
     if (validReceiveChannels.includes(channel)) {
+      const wrappedCallback = (event, ...args) => {
+        console.log(`[Preload] Received on channel: ${channel}`, args);
+        callback(...args);
+      };
       console.log(`[Preload] Listening to channel: ${channel}`);
-      ipcRenderer.on(channel, (event, ...args) => callback(...args));
+      ipcRenderer.on(channel, wrappedCallback);
+      
+      // Return the wrapped callback for proper removal
+      return wrappedCallback;
     } else {
       console.warn(`[Preload] Attempted to listen to invalid channel: ${channel}`);
+      return null;
     }
   },
   receive: (channel, func) => {
@@ -31,7 +54,11 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.on(channel, (_event, ...args) => func(...args));
     }
   },
-  removeListener: (channel, func) => ipcRenderer.removeListener(channel, func),
+  removeListener: (channel, func) => {
+    if (func) {
+      ipcRenderer.removeListener(channel, func);
+    }
+  },
   removeAllListeners: (channel) => {
     if (validReceiveChannels.includes(channel)) {
       console.log(`[Preload] Removing all listeners for channel: ${channel}`);

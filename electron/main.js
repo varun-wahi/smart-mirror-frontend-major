@@ -193,6 +193,46 @@ function setupIPCChannels() {
     processMessageQueues();
   });
 
+  // Handle control actions from controller
+  // Handle analysis data display
+ipcMain.on('show-analysis', (event, analysisData) => {
+  console.log("[Main] Received analysis data to display");
+  
+  // Navigate to analysis page
+  sendToMainWindow('navigate', { path: '/interview-analysis' });
+  
+  // Send analysis data with a slight delay to ensure navigation completes
+  setTimeout(() => {
+    if (!sendToMainWindow('analysis-data', analysisData)) {
+      console.log("[Main] Analysis window not ready, data queued");
+    }
+  }, 500);
+});
+
+// Forward tab change request to main window
+ipcMain.on('request-tab-change', (event, tabName) => {
+  console.log(`[Main] Changing analysis tab to: ${tabName}`);
+  sendToMainWindow('change-tab', tabName);
+});
+
+// Forward scroll request to main window
+ipcMain.on('request-scroll', (event, direction) => {
+  console.log(`[Main] Scrolling ${direction}`);
+  sendToMainWindow('scroll', direction);
+});
+
+// Forward question details request
+ipcMain.on('request-question-details', (event, questionIndex) => {
+  console.log(`[Main] Showing details for question ${questionIndex}`);
+  sendToMainWindow('show-question-details', questionIndex);
+});
+
+// Forward close question details request
+ipcMain.on('request-close-question-details', () => {
+  console.log("[Main] Closing question details");
+  sendToMainWindow('close-question-details');
+});
+
   // Handle audio transcription requests using Python script
   ipcMain.on('transcribe-audio', async (event, { buffer, questionIndex }) => {
     try {
@@ -208,13 +248,13 @@ function setupIPCChannels() {
       
       // Path to Python script
       // const transcriptionScript = path.join(__dirname, 'scripts', 'transcription.py');
-      // const transcriptionScript = '/Users/varunwahi/Development/Interview_Prep/frontend/src/controlApp/scripts/transcription.py';
-      const transcriptionScript = '/home/smartmirror/Desktop/SmartMirror/frontend/src/controlApp/scripts/transcription.py';
+      const transcriptionScript = '/Users/varunwahi/Development/Interview_Prep/frontend/src/controlApp/scripts/transcription.py';
+      // const transcriptionScript = '/home/smartmirror/Desktop/SmartMirror/frontend/src/controlApp/scripts/transcription.py';
       
       // Determine correct Python command based on platform
       // const pythonCommand = process.platform === 'darwin' ? 'python3' : 'python';
-      // const pythonCommand = '/Users/varunwahi/Development/Interview_Prep/frontend/whisper-env/bin/python3';
-      const pythonCommand = 'python';
+      const pythonCommand = 'python3.10';
+      // const pythonCommand = 'python';
       
       // Run Python script for transcription
       console.log(`[Main] Running transcription script: ${pythonCommand} ${transcriptionScript} ${audioFilePath}`);

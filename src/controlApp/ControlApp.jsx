@@ -4,6 +4,7 @@ import MicControlPage from "./pages/MicControlPage.jsx";
 import TopicSelectionPage from "./pages/TopicSelectionPage.jsx";
 import QuestionNavigatorPage from "./pages/QuestionNavigatorPage.jsx";
 import ReviewAnswersPage from "./pages/ReviewAnswersPage.jsx";
+import AnalysisController from "./pages/AnalysisController.jsx";
 
 const ControlApp = () => {
   return (
@@ -14,6 +15,10 @@ const ControlApp = () => {
         <Route path="/select-topic" element={<TopicSelectionPage navigate={window.history.back} />} />
         <Route path="/question-navigator" element={<QuestionNavigatorPage navigate={window.history.back} />} />
         <Route path="/review-answers" element={<ReviewAnswersPage />} />
+        <Route path= '/interview-analysis-controller' element={ <AnalysisController />} />
+        {
+ 
+}
       </Routes>
     </Router>
   );
