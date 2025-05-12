@@ -14,6 +14,17 @@ const TouchscreenAppGrid = () => {
   const [isMotionActive, setIsMotionActive] = useState(false);
   const navigate = useNavigate();
 
+  const handleShutdown = async () => {
+    if (window.confirm("Are you sure you want to shut down the system?")) {
+      try {
+        const response = await axios.post("http://localhost:5030/shutdown");
+        console.log("Shutdown command sent:", response.data);
+      } catch (error) {
+        console.error("Error sending shutdown command:", error);
+      }
+    }
+  };
+
   const handleAppClick = (app) => {
     if (app.name === "Interview Practice") {
       // Go to topic selection screen in controller app
@@ -73,9 +84,8 @@ const TouchscreenAppGrid = () => {
 
       <button
         onClick={toggleMotionDetection}
-        className={`flex flex-col items-center justify-center ${
-          isMotionActive ? "bg-green-600" : "bg-red-600"
-        } hover:bg-opacity-80 active:bg-opacity-70 rounded-xl shadow-lg p-6 transition-transform transform hover:scale-105 focus:ring-2 focus:ring-teal-500`}
+        className={`flex flex-col items-center justify-center ${isMotionActive ? "bg-green-600" : "bg-red-600"
+          } hover:bg-opacity-80 active:bg-opacity-70 rounded-xl shadow-lg p-6 transition-transform transform hover:scale-105 focus:ring-2 focus:ring-teal-500`}
         aria-label="Toggle Lights"
       >
         <img
@@ -85,11 +95,28 @@ const TouchscreenAppGrid = () => {
           onError={(e) => {
             e.target.onerror = null;
             e.target.src = "icons/default.png";
+            }}
+          />
+          <div className="text-white text-center text-sm font-medium">
+            {isMotionActive ? "Stop Light" : "Start Light"}
+          </div>
+          </button>
+
+          <button
+          onClick={handleShutdown}
+          className="flex flex-col items-center justify-center bg-gradient-to-b from-gray-800 to-zinc-900 hover:from-gray-700 hover:to-zinc-800 rounded-xl shadow-lg p-6 transition-transform transform hover:scale-105 focus:ring-2 focus:ring-red-500"
+          aria-label="Shutdown System"
+          >
+          <img
+            src="icons/power.png"
+            alt="Power Icon"
+            className="w-16 h-16 mb-2"
+            onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = "icons/default.png";
           }}
         />
-        <div className="text-white text-center text-sm font-medium">
-          {isMotionActive ? "Stop Light" : "Start Light"}
-        </div>
+        <div className="text-white text-center text-sm font-medium">Power Off</div>
       </button>
     </div>
   );
