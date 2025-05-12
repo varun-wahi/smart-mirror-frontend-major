@@ -51,7 +51,7 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
         const nextIndex = (currentIndex + 1) % chartTypes.length;
         return chartTypes[nextIndex];
       });
-    }, 10000); // 10 seconds
+    }, 5000); // 10 seconds
 
     return () => clearInterval(rotationInterval);
   }, []);
