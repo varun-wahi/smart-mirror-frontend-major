@@ -24,6 +24,7 @@ const validSendChannels = [
 'change-tab',
 'scroll',
 'show-question-details',
+'request-interview-data',
 
 
 

@@ -20,7 +20,7 @@ const QuestionNavigatorPage = () => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  API_URL = "http://localhost:5030"
+  const API_URL = "http://localhost:5030"
 
   // Memoized request interview data function
   const requestInterviewData = useCallback(() => {
@@ -40,7 +40,7 @@ const QuestionNavigatorPage = () => {
     if (!text) return;
     
     try {
-      const response = await fetch('${API_URL}/speak', {
+      const response = await fetch(`${API_URL}/speak`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
