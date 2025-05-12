@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const topics = ["React JS", "Python", "SDE", "OOPS", "DBMS", "computer-networks", "operating-systems"];
+const topics = ["React JS", "Python", "SDE", "OOPS", "DBMS", "Computer Networks", "Operating Systems"];
 const difficulties = ["Easy", "Medium", "Hard"];
 const questionCounts = [5, 10, 20];
 

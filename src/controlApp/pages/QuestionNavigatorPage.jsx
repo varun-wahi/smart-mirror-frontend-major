@@ -306,16 +306,16 @@ const QuestionNavigatorPage = () => {
     }
   };
 
-  const getRecordButtonClass = () => {
-    switch (recordingState) {
-      case "recording":
-        return "bg-red-600 hover:bg-red-500 border-2 border-red-400";
-      case "transcribing":
-        return "bg-yellow-600 border-2 border-yellow-400 cursor-wait";
-      default:
-        return "bg-gray-800 hover:bg-gray-700";
-    }
-  };
+const getRecordButtonClass = () => {
+  switch (recordingState) {
+    case "recording":
+      return "bg-red-600 hover:bg-red-500 border-4 border-red-500 text-white";
+    case "transcribing":
+      return "bg-yellow-600 border-4 border-yellow-400 cursor-wait text-white";
+    default: // not recording
+      return "bg-gray-800 hover:bg-gray-700 border-4 border-red-600 text-white";
+  }
+};
 
   // Loading screen with retry button
   if (isLoading || !interviewData) {
@@ -342,7 +342,7 @@ const QuestionNavigatorPage = () => {
   const totalQuestions = interviewData.questions.length;
   const currentQuestion = interviewData.questions[currentIndex];
 return (
-  <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-2 relative">
+  <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6 relative">
     {/* Back to Home Button */}
     <button 
       onClick={() => {
@@ -357,48 +357,48 @@ return (
         // Also navigate in React
         navigate('/');
       }}
-      className="absolute top-2 left-2 bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-md flex items-center text-sm"
+      className="absolute top-6 left-6 bg-gray-700 hover:bg-gray-600 px-6 py-5 rounded-md flex items-center text-2xl"
     >
-      <span className="mr-1">←</span> Back
+      <span className="mr-3">←</span> Back
     </button>
       
-    <div className="w-full max-w-full bg-gray-800 p-4 rounded-xl shadow-lg">
-      <p className="text-sm mb-2 text-gray-400">Question {currentIndex + 1}/{totalQuestions}</p>
+    <div className="w-full max-w-full bg-gray-800 p-8 rounded-xl shadow-lg">
+      <p className="text-lg mb-6 text-gray-400">Question {currentIndex + 1}/{totalQuestions}</p>
 
-      <div className="mb-3">
-        <div className="w-full bg-gray-700 p-3 rounded-md min-h-[60px] text-white text-sm whitespace-pre-wrap">
+      <div className="mb-6">
+        <div className="w-full bg-gray-700 p-6 rounded-md min-h-[100px] text-white text-lg whitespace-pre-wrap">
           {transcription || "No answer recorded yet."}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-3">
+      <div className="grid grid-cols-2 gap-8 mb-6">
         <button
           onClick={handleSpeakQuestion}
-          className="bg-indigo-600 hover:bg-indigo-500 px-2 py-4 rounded-md font-medium text-lg flex items-center justify-center"
+          className="bg-indigo-600 hover:bg-indigo-500 px-6 py-8 rounded-md font-semibold text-2xl flex items-center justify-center"
         >
           🔊 Hear Question
         </button>
         
         <button
           onClick={handleToggleRecording}
-          className={`text-white px-2 py-4 rounded-md font-medium text-lg flex items-center justify-center ${getRecordButtonClass()}`}
+          className={`text-white px-6 py-8 rounded-md font-semibold text-2xl flex items-center justify-center ${getRecordButtonClass()}`}
         >
           🎤 {getRecordButtonText()}
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-8">
         <button
           onClick={handlePrev}
           disabled={currentIndex === 0}
-          className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 px-2 py-4 rounded-md text-lg"
+          className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 px-6 py-8 rounded-md text-2xl"
         >
           ← Previous
         </button>
 
         <button
           onClick={handleNext}
-          className="bg-green-600 hover:bg-green-500 px-2 py-4 rounded-md text-lg"
+          className="bg-green-600 hover:bg-green-500 px-6 py-8 rounded-md text-2xl"
         >
           {currentIndex === totalQuestions - 1 ? "Finish →" : "Next →"}
         </button>
