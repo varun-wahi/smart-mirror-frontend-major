@@ -28,8 +28,8 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
   const [chartData, setChartData] = useState([]);
   const [radarData, setRadarData] = useState([]);
   
-  // Ref for scroll container
-  const scrollContainerRef = useRef(null);
+  // Ref for content container
+  const contentContainerRef = useRef(null);
 
   // Improved colors for charts - more vibrant and distinct
   const COLORS = {
@@ -41,6 +41,20 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
     strength: '#10b981',     // Emerald
     improvement: '#ef4444'   // Red
   };
+
+  // Auto-rotate chart types
+  useEffect(() => {
+    const chartTypes = ['radar', 'bar', 'line'];
+    const rotationInterval = setInterval(() => {
+      setActiveTab(prevTab => {
+        const currentIndex = chartTypes.indexOf(prevTab);
+        const nextIndex = (currentIndex + 1) % chartTypes.length;
+        return chartTypes[nextIndex];
+      });
+    }, 10000); // 10 seconds
+
+    return () => clearInterval(rotationInterval);
+  }, []);
 
   // Handle direct props or IPC data
   useEffect(() => {
@@ -95,19 +109,6 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
       setActiveTab(tabName);
     };
 
-    const handleScroll = (direction) => {
-      if (!scrollContainerRef.current) return;
-
-      const scrollAmount = direction === 'up' 
-        ? -scrollContainerRef.current.clientHeight / 2 
-        : scrollContainerRef.current.clientHeight / 2;
-      
-      scrollContainerRef.current.scrollBy({
-        top: scrollAmount,
-        behavior: 'smooth'
-      });
-    };
-
     const handleQuestionDetailsRequest = (questionIndex) => {
       if (localAnalysisResults[questionIndex]) {
         setQuestionDetails({
@@ -123,7 +124,6 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
 
     if (window.api) {
       window.api.on('change-tab', handleTabChange);
-      window.api.on('scroll', handleScroll);
       window.api.on('show-question-details', handleQuestionDetailsRequest);
       window.api.on('close-question-details', handleCloseQuestionDetails);
     }
@@ -131,7 +131,6 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
     return () => {
       if (window.api) {
         window.api.removeListener('change-tab', handleTabChange);
-        window.api.removeListener('scroll', handleScroll);
         window.api.removeListener('show-question-details', handleQuestionDetailsRequest);
         window.api.removeListener('close-question-details', handleCloseQuestionDetails);
       }
@@ -144,20 +143,6 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
       prepareChartData();
     }
   }, [localAnalysisResults]);
-
-  // Handle scroll functionality
-  const handleScroll = (direction) => {
-    if (!scrollContainerRef.current) return;
-
-    const scrollAmount = direction === 'up' 
-      ? -scrollContainerRef.current.clientHeight / 2 
-      : scrollContainerRef.current.clientHeight / 2;
-
-    scrollContainerRef.current.scrollBy({
-      top: scrollAmount,
-      behavior: 'smooth'
-    });
-  };
 
   // Prepare chart data
   const prepareChartData = () => {
@@ -215,7 +200,7 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
           className={`px-4 py-2 rounded-md transition-all duration-200 ${
             activeTab === tab
               ? 'bg-indigo-600 text-white shadow-lg'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              : 'bg-gray-900 text-gray-300 hover:bg-gray-800'
           }`}
         >
           {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -230,7 +215,7 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
     
     return (
       <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 backdrop-blur-sm">
-        <div className="bg-gray-800 rounded-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto shadow-xl border border-gray-700">
+        <div className="bg-black rounded-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto shadow-xl border border-gray-700">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-white">Question {parseInt(questionDetails.index) + 1} Analysis</h3>
             <button 
@@ -255,7 +240,7 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
             ].map(metric => (
               <div 
                 key={metric.name} 
-                className="bg-gray-700 p-4 rounded-lg shadow-md transition-transform duration-200 hover:scale-105 cursor-default"
+                className="bg-gray-900 p-4 rounded-lg shadow-md transition-transform duration-200 hover:scale-105 cursor-default"
                 style={{ borderLeft: `4px solid ${metric.color}` }}
               >
                 <span className="text-sm text-gray-300">{metric.name}</span>
@@ -266,13 +251,13 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
             ))}
           </div>
           
-          <div className="bg-gray-700 p-5 rounded-lg mb-6 shadow-md border-l-4 border-blue-500">
+          <div className="bg-gray-900 p-5 rounded-lg mb-6 shadow-md border-l-4 border-blue-500">
             <h4 className="font-medium mb-3 text-blue-300">Feedback</h4>
             <p className="text-gray-300">{questionDetails.feedback}</p>
           </div>
           
           {questionDetails.improvementSuggestions && (
-            <div className="bg-gray-700 p-5 rounded-lg shadow-md border-l-4 border-amber-500">
+            <div className="bg-gray-900 p-5 rounded-lg shadow-md border-l-4 border-amber-500">
               <h4 className="font-medium mb-3 text-amber-300">Improvement Suggestions</h4>
               <p className="text-gray-300">{questionDetails.improvementSuggestions}</p>
             </div>
@@ -285,8 +270,8 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
   // If no analysis data, show placeholder
   if (Object.keys(localAnalysisResults).length === 0) {
     return (
-      <div className="p-8 bg-gray-800 rounded-xl text-center flex flex-col items-center justify-center space-y-4 shadow-lg h-full">
-        <div className="bg-gray-700 p-4 rounded-full inline-block">
+      <div className="p-8 bg-black rounded-xl text-center flex flex-col items-center justify-center space-y-4 shadow-lg h-full w-full">
+        <div className="bg-gray-900 p-4 rounded-full inline-block">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
@@ -298,24 +283,24 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
   }
 
   return (
-    <div className="flex h-full bg-gray-900">
+    <div className="flex h-screen w-full bg-black">
       {/* Main Content Area */}
-      <div className="flex-grow overflow-hidden relative">
+      <div className="flex-grow overflow-auto">
         <div 
-          ref={scrollContainerRef} 
-          className="h-full overflow-y-auto pr-10 pl-6 pt-8 pb-20"
+          ref={contentContainerRef} 
+          className="h-full p-8"
         >
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-white">Performance Analysis</h2>
             {renderChartTypeTabs()}
           </div>
           
-          <div className="bg-gray-800 rounded-xl p-6 shadow-lg mb-8">
+          <div className="bg-gray-900 rounded-xl p-6 shadow-lg mb-8">
             <div className="h-80">
               {activeTab === 'radar' && (
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                    <PolarGrid stroke="#4b5563" />
+                    <PolarGrid stroke="#1f2937" />
                     <PolarAngleAxis dataKey="subject" tick={{ fill: '#e5e7eb' }} />
                     <PolarRadiusAxis angle={30} domain={[0, 10]} tick={{ fill: '#9ca3af' }} />
                     <Radar
@@ -326,7 +311,7 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
                       fillOpacity={0.6}
                     />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)' }}
+                      contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)' }}
                       formatter={(value) => [`${value.toFixed(1)}/10`, 'Score']}
                     />
                     <Legend />
@@ -340,11 +325,11 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
                     data={chartData}
                     margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
                     <XAxis dataKey="name" tick={{ fill: '#e5e7eb' }} />
                     <YAxis domain={[0, 10]} tick={{ fill: '#9ca3af' }} />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)' }}
+                      contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)' }}
                       cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}
                     />
                     <Legend />
@@ -363,11 +348,11 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
                     data={chartData}
                     margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
                     <XAxis dataKey="name" tick={{ fill: '#e5e7eb' }} />
                     <YAxis domain={[0, 10]} tick={{ fill: '#9ca3af' }} />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)' }}
+                      contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)' }}
                       formatter={(value) => [`${value}/10`, '']}
                     />
                     <Legend />
@@ -420,7 +405,7 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
           {/* Strength & Improvement Areas */}
           {localOverallAnalysis && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-gray-800 rounded-xl p-6 shadow-lg overflow-y-auto border border-gray-700">
+              <div className="bg-gray-900 rounded-xl p-6 shadow-lg overflow-y-auto border border-gray-700">
                 <div className="flex items-center mb-4">
                   <div className="bg-green-500 bg-opacity-20 p-2 rounded-lg mr-3">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -438,7 +423,7 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
                   ))}
                 </ul>
               </div>
-              <div className="bg-gray-800 rounded-xl p-6 shadow-lg overflow-y-auto border border-gray-700">
+              <div className="bg-gray-900 rounded-xl p-6 shadow-lg overflow-y-auto border border-gray-700">
                 <div className="flex items-center mb-4">
                   <div className="bg-red-500 bg-opacity-20 p-2 rounded-lg mr-3">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -461,7 +446,7 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
           
           {/* Development Plan */}
           {localOverallAnalysis && (
-            <div className="bg-gray-800 p-6 rounded-xl shadow-lg mb-8 border border-gray-700">
+            <div className="bg-gray-900 p-6 rounded-xl shadow-lg mb-8 border border-gray-700">
               <div className="flex items-center mb-4">
                 <div className="bg-blue-500 bg-opacity-20 p-2 rounded-lg mr-3">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -470,7 +455,7 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
                 </div>
                 <h3 className="text-lg font-semibold text-blue-400">Development Plan</h3>
               </div>
-              <div className="bg-gray-700 bg-opacity-50 p-4 rounded-lg text-gray-300">
+              <div className="bg-black bg-opacity-50 p-4 rounded-lg text-gray-300">
                 {localOverallAnalysis.developmentPlan}
               </div>
             </div>
@@ -479,32 +464,6 @@ const InterviewPerformancePage = ({ analysisResults = {}, overallAnalysis = null
           {/* Render the question details modal */}
           {renderQuestionDetails()}
         </div>
-      </div>
-      
-      {/* Custom Scrollbar */}
-      <div className="w-12 bg-gray-800 flex flex-col justify-between items-center py-6 border-l border-gray-700">
-        <button 
-          onClick={() => {
-            handleScroll('up');
-            if (window.api) window.api.send('scroll', 'up');
-          }} 
-          className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg mb-2 shadow-lg transition-all duration-200 hover:scale-110"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 11l7-7 7 7M5 19l7-7 7 7" />
-          </svg>
-        </button>
-        <button 
-          onClick={() => {
-            handleScroll('down');
-            if (window.api) window.api.send('scroll', 'down');
-          }} 
-          className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg shadow-lg transition-all duration-200 hover:scale-110"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 13l-7 7-7-7m14-8l-7 7-7-7" />
-          </svg>
-        </button>
       </div>
     </div>
   );
