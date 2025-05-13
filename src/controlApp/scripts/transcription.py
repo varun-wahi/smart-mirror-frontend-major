@@ -3,39 +3,46 @@ import os
 import whisper
 from google.cloud import speech
 import time
-import wave
 import subprocess
 
 def get_audio_info(file_path):
     """Get audio information using ffprobe"""
     try:
-        cmd = [
+        # Get sample rate
+        cmd_sample_rate = [
             'ffprobe', 
             '-v', 'error',
-            '-show_entries', 'stream=sample_rate,codec_name',
+            '-select_streams', 'a:0',
+            '-show_entries', 'stream=sample_rate',
             '-of', 'default=noprint_wrappers=1:nokey=1',
             file_path
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        lines = result.stdout.strip().split('\n')
+        result = subprocess.run(cmd_sample_rate, capture_output=True, text=True)
+        sample_rate = int(result.stdout.strip())
         
-        if len(lines) >= 2:
-            sample_rate = int(lines[0])
-            codec_name = lines[1].lower()
-            return sample_rate, codec_name
-        return None, None
+        # Get codec name
+        cmd_codec = [
+            'ffprobe', 
+            '-v', 'error',
+            '-select_streams', 'a:0',
+            '-show_entries', 'stream=codec_name',
+            '-of', 'default=noprint_wrappers=1:nokey=1',
+            file_path
+        ]
+        result = subprocess.run(cmd_codec, capture_output=True, text=True)
+        codec_name = result.stdout.strip().lower()
+        
+        print(f"Detected audio: {codec_name} codec with {sample_rate}Hz sample rate")
+        return sample_rate, codec_name
     except Exception as e:
         print(f"Error getting audio info: {e}")
-        return None, None
+        return 48000, None  # Default to 48000 Hz
 
-def transcribe_with_google(file_path, language_code="en-IN"):
+def transcribe_with_google(file_path, language_code="en-US"):
     """Transcribe audio file using Google Speech-to-Text API"""
     try:
         # Get audio info
         sample_rate, codec_name = get_audio_info(file_path)
-        if not sample_rate:
-            print("Couldn't determine audio sample rate. Using default configuration.")
-            sample_rate = 48000  # Default to 48000 for WEBM files
         
         # Determine encoding based on codec
         encoding = speech.RecognitionConfig.AudioEncoding.ENCODING_UNSPECIFIED
@@ -59,7 +66,7 @@ def transcribe_with_google(file_path, language_code="en-IN"):
         # Configure audio settings
         audio = speech.RecognitionAudio(content=content)
         
-        # Configure recognition settings
+        # Configure recognition settings - using en-US as default which is definitely supported
         config = speech.RecognitionConfig(
             encoding=encoding,
             sample_rate_hertz=sample_rate,
@@ -67,6 +74,8 @@ def transcribe_with_google(file_path, language_code="en-IN"):
             enable_automatic_punctuation=True,
         )
 
+        print(f"Using Google Speech-to-Text with {language_code} language code")
+        
         # Perform the transcription
         response = client.recognize(config=config, audio=audio)
 
@@ -95,7 +104,7 @@ def transcribe_with_whisper(file_path, model_name="tiny.en"):
         print(f"Whisper error: {e}")
         return None
 
-def transcribe_audio(file_path, language_code="en-IN", model_name="tiny.en"):
+def transcribe_audio(file_path, language_code="en-US", model_name="tiny.en"):
     """Transcribe audio, trying Google first, then falling back to Whisper"""
     print("Attempting to transcribe with Google Speech-to-Text...")
     start_time = time.time()
@@ -117,7 +126,7 @@ if __name__ == "__main__":
         sys.exit(1)
     
     file_path = sys.argv[1]
-    language_code = sys.argv[2] if len(sys.argv) > 2 else "en-IN"
+    language_code = sys.argv[2] if len(sys.argv) > 2 else "en-US"  # Changed to en-US as default
     model_name = sys.argv[3] if len(sys.argv) > 3 else "tiny.en"
     
     result = transcribe_audio(file_path, language_code, model_name)
