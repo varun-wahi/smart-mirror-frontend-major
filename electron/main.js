@@ -60,7 +60,7 @@ function createControlWindow() {
   const displays = screen.getAllDisplays();
 
   // Use the second display if available, otherwise default to primary
-  const externalDisplay = displays.length > 1 ? displays[1] : displays[0];
+  const externalDisplay = displays.length > 1 ? displays[0] : displays[0];
 
   controlWindow = new BrowserWindow({
     x: externalDisplay.bounds.x,
