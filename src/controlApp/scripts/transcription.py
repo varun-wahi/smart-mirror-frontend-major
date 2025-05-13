@@ -3,10 +3,52 @@ import os
 import whisper
 from google.cloud import speech
 import time
+import wave
+import subprocess
+
+def get_audio_info(file_path):
+    """Get audio information using ffprobe"""
+    try:
+        cmd = [
+            'ffprobe', 
+            '-v', 'error',
+            '-show_entries', 'stream=sample_rate,codec_name',
+            '-of', 'default=noprint_wrappers=1:nokey=1',
+            file_path
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        lines = result.stdout.strip().split('\n')
+        
+        if len(lines) >= 2:
+            sample_rate = int(lines[0])
+            codec_name = lines[1].lower()
+            return sample_rate, codec_name
+        return None, None
+    except Exception as e:
+        print(f"Error getting audio info: {e}")
+        return None, None
 
 def transcribe_with_google(file_path, language_code="en-IN"):
     """Transcribe audio file using Google Speech-to-Text API"""
     try:
+        # Get audio info
+        sample_rate, codec_name = get_audio_info(file_path)
+        if not sample_rate:
+            print("Couldn't determine audio sample rate. Using default configuration.")
+            sample_rate = 48000  # Default to 48000 for WEBM files
+        
+        # Determine encoding based on codec
+        encoding = speech.RecognitionConfig.AudioEncoding.ENCODING_UNSPECIFIED
+        if codec_name:
+            if 'opus' in codec_name:
+                encoding = speech.RecognitionConfig.AudioEncoding.WEBM_OPUS
+            elif 'pcm' in codec_name or 'wav' in codec_name:
+                encoding = speech.RecognitionConfig.AudioEncoding.LINEAR16
+            elif 'flac' in codec_name:
+                encoding = speech.RecognitionConfig.AudioEncoding.FLAC
+            elif 'mp3' in codec_name:
+                encoding = speech.RecognitionConfig.AudioEncoding.MP3
+        
         # Instantiate a client
         client = speech.SpeechClient()
 
@@ -19,8 +61,8 @@ def transcribe_with_google(file_path, language_code="en-IN"):
         
         # Configure recognition settings
         config = speech.RecognitionConfig(
-            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-            sample_rate_hertz=16000,  # May need adjustment based on your audio
+            encoding=encoding,
+            sample_rate_hertz=sample_rate,
             language_code=language_code,
             enable_automatic_punctuation=True,
         )
@@ -75,7 +117,7 @@ if __name__ == "__main__":
         sys.exit(1)
     
     file_path = sys.argv[1]
-    language_code = sys.argv[2] if len(sys.argv) > 2 else "en-IN"  # Default to en-IN
+    language_code = sys.argv[2] if len(sys.argv) > 2 else "en-IN"
     model_name = sys.argv[3] if len(sys.argv) > 3 else "tiny.en"
     
     result = transcribe_audio(file_path, language_code, model_name)
