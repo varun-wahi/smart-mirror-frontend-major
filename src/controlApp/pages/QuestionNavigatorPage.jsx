@@ -127,7 +127,7 @@ const QuestionNavigatorPage = () => {
         setTranscription(result.text);
         
         // Speak out the transcription result
-        speakText("Answer transcribed: " + result.text);
+        speakText("Answer transcribed: ");
       }
       
       // Reset recording state
